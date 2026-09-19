@@ -29,3 +29,7 @@ modules/imprimir/archivos_recibidos/*
 
 # Logs y temporales
 *.log
+
+node-embed/node_modules/
+node-embed/corepack
+node-embed/corepack.cmd
