@@ -1,0 +1,69 @@
+{
+  "nombre": "escanear",
+  "version": "1.0.0",
+  "descripcion": "Escanea documentos desde un escáner o impresora multifunción conectada, vía WIA (Windows Image Acquisition). No requiere instalar nada nuevo: usa pywin32, que ya está instalado para el módulo 'imprimir'.",
+  "main": "main.py",
+  "puerto": "asignado dinámicamente por el loader (modules/registro.js) al arrancar, no es fijo",
+
+  "funciones": [
+    {
+      "nombre": "escaneres",
+      "descripcion": "Lista los escáneres conectados (vía WIA), numerados desde 0, para poder elegir cuál usar en 'escanear_documento'.",
+      "expuestaComo": {
+        "mcp": "escaneres",
+        "rest": "GET /api/escaneres"
+      },
+      "parametros": {},
+      "retorna": "Texto con un escáner por línea, formato 'índice. nombre'."
+    },
+    {
+      "nombre": "escanear_documento",
+      "descripcion": "Escanea una o varias páginas y guarda el resultado en el disco del host (nunca en base64 por defecto, para no comerse el contexto con un archivo de varios MB).",
+      "expuestaComo": {
+        "mcp": "escanear_documento",
+        "rest": "POST /api/escanear"
+      },
+      "parametros": {
+        "dispositivo": { "tipo": "number", "requerido": false, "default": 0, "descripcion": "Índice del escáner (ver 'escaneres')" },
+        "color": { "tipo": "enum", "valores": ["color", "grises", "bw"], "requerido": false, "default": "color" },
+        "resolucion": { "tipo": "number", "requerido": false, "default": 300, "descripcion": "DPI" },
+        "formato": { "tipo": "enum", "valores": ["pdf", "png", "jpg"], "requerido": false, "default": "pdf" },
+        "paginas": { "tipo": "number|\"todas\"", "requerido": false, "default": 1, "descripcion": "Cantidad de páginas a escanear." },
+        "esperaEntrePaginasMs": { "tipo": "number", "requerido": false, "default": 5000, "descripcion": "Solo aplica si 'paginas' > 1. Pausa en milisegundos entre que termina una página y arranca la siguiente. Pensado para escáner plano (flatbed) sin alimentador: da tiempo a cambiar la hoja a mano." },
+        "ruta": { "tipo": "string", "requerido": false, "descripcion": "Dónde guardar el resultado. Si no se manda, se guarda en modules/escanear/escaneos_recibidos/" }
+      },
+      "retorna": {
+        "ok": "boolean",
+        "archivo": "string (ruta final, si fue 1 solo archivo)",
+        "archivos": "string[] (rutas finales, si fueron varias páginas en png/jpg)",
+        "paginas": "number"
+      }
+    }
+  ],
+
+  "auth": {
+    "mcp": "sesion (token de iniciar_sesion)",
+    "rest": "api_key (header x-api-key)"
+  },
+
+  "componentes": {
+    "node": {
+      "requiere": ["module.js registra las tools MCP y las rutas REST, y levanta el worker python bajo demanda"]
+    },
+    "python": {
+      "version_minima": "3.10",
+      "paquetes": ["pywin32 (ya instalado por el módulo imprimir)", "Pillow (ya instalado por el módulo imprimir)"]
+    }
+  },
+
+  "endpointsInternos": [
+    { "metodo": "GET", "ruta": "/salud", "descripcion": "Chequeo de que el worker python está activo" },
+    { "metodo": "GET", "ruta": "/dispositivos", "descripcion": "Lista de escáneres WIA detectados" },
+    { "metodo": "POST", "ruta": "/escanear", "descripcion": "Recibe JSON con dispositivo/color/resolucion/formato/paginas/rutaSalida y escanea" }
+  ],
+
+  "notas": [
+    "El manejo de alimentador automático (ADF) corta el loop de páginas al recibir el error WIA 0x80210003 (WIA_ERROR_PAPER_EMPTY), que es el aviso normal de 'no hay más hojas'. No se probó exhaustivamente contra todos los modelos de escáner.",
+    "En un escáner plano (flatbed) sin ADF, pedir más de 1 página puede comportarse raro (puede volver a escanear la misma hoja). Usar 'paginas: 1' en flatbed."
+  ]
+}

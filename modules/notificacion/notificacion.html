@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Notificaciones</title>
+<style>
+  :root {
+    --card-bg: #ffffff;
+    --border: #e2e2e2;
+    --text: #1f1f1f;
+    --muted: #6b6b6b;
+    --accent: #1a73e8;
+    --track: #e8eaed;
+    --shadow: rgba(0,0,0,0.22);
+    --bad: #d0342c;
+    --good: #1e8e3e;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  #notif-stack {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    left: 14px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+    max-height: calc(100% - 28px);
+    overflow-y: auto;
+  }
+
+  .notif {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 6px 20px var(--shadow);
+    padding: 14px 14px 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+    transition: transform 0.32s cubic-bezier(.2,.8,.2,1), opacity 0.32s ease;
+  }
+  .notif.show { opacity: 1; transform: translateY(0) scale(1); }
+  .notif.leaving { opacity: 0; transform: translateY(-14px) scale(0.96); }
+
+  .notif-icon {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #e8f0fe;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .notif-icon.ok { background: #e6f4ea; }
+  .notif-icon.bad { background: #fdecea; }
+  .notif-icon svg { width: 20px; height: 20px; }
+  .notif-icon.spinning svg { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .notif-body { flex: 1 1 auto; min-width: 0; }
+  .notif-title { font-size: 13.5px; line-height: 1.35; color: var(--text); margin: 0 0 6px 0; word-break: break-word; }
+  .notif-title b { font-weight: 600; }
+
+  .progress-track { width: 100%; height: 6px; background: var(--track); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+  .progress-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 4px; transition: width 0.25s ease; }
+  .progress-fill.indeterminado { width: 35%; animation: deslizar 1.2s ease-in-out infinite; }
+  @keyframes deslizar { 0% { margin-left: 0%; } 50% { margin-left: 65%; } 100% { margin-left: 0%; } }
+  .progress-meta { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+
+  .notif-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .notif-btn {
+    background: transparent; border: 1px solid var(--accent); color: var(--accent);
+    font-size: 12.5px; font-weight: 500; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .notif-btn:hover { background: var(--accent); color: #fff; }
+  .notif-btn.cancelar { border-color: var(--bad); color: var(--bad); }
+  .notif-btn.cancelar:hover { background: var(--bad); color: #fff; }
+
+  .notif-close {
+    flex: 0 0 auto; width: 22px; height: 22px; border: none; background: transparent;
+    color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s ease;
+  }
+  .notif-close:hover { background: #eeeeee; }
+</style>
+</head>
+<body>
+  <div id="notif-stack"></div>
+
+  <script>
+    const stack = document.getElementById("notif-stack");
+    const elementos = new Map();       // id -> elemento DOM
+    const estadosPrevios = new Map();  // id -> ultimo estado visto (para saber cuando recien termino)
+
+    function iconoSpinnerSVG() {
+      return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="9" stroke="#dbe6fb" stroke-width="3"/>
+        <path d="M21 12a9 9 0 00-9-9" stroke="#1a73e8" stroke-width="3" stroke-linecap="round"/>
+      </svg>`;
+    }
+    function iconoOkSVG() {
+      return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 13l4 4L19 7" stroke="#1e8e3e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+    }
+    function iconoBadSVG() {
+      return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="9" stroke="#d0342c" stroke-width="2"/>
+        <path d="M9 9l6 6M15 9l-6 6" stroke="#d0342c" stroke-width="2" stroke-linecap="round"/>
+      </svg>`;
+    }
+
+    let audioCtx = null;
+    function sonarChime() {
+      try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.exponentialRampToValueAtTime(1320, now + 0.12);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } catch { /* si el navegador bloquea audio sin interaccion previa, no pasa nada */ }
+    }
+
+    async function enviarAccion(id, accion, valor) {
+      try {
+        await fetch("/accion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, accion, valor }),
+        });
+      } catch { /* si falla, no hay mucho que hacer desde aca */ }
+    }
+
+    function quitarElemento(id) {
+      const el = elementos.get(id);
+      if (!el) return;
+      el.classList.add("leaving");
+      el.classList.remove("show");
+      el.addEventListener("transitionend", () => { el.remove(); }, { once: true });
+      elementos.delete(id);
+      estadosPrevios.delete(id);
+    }
+
+    function crearElemento(n) {
+      const el = document.createElement("div");
+      el.className = "notif";
+      el.dataset.id = n.id;
+
+      const terminada = n.estado !== "activa";
+      const tono = n.estado === "completada" ? "ok" : (terminada ? "bad" : "");
+      const iconoHtml = n.estado === "completada" ? iconoOkSVG() : (terminada ? iconoBadSVG() : iconoSpinnerSVG());
+      const claseSpin = terminada ? "" : "spinning";
+
+      let cuerpoHtml = `<p class="notif-title">${n.mensaje}</p>`;
+
+      if (n.tipo === "progreso") {
+        const indeterminado = n.progreso == null;
+        const pct = indeterminado ? 0 : Math.min(100, Math.max(0, n.progreso));
+        cuerpoHtml += `
+          <div class="progress-track"><div class="progress-fill${indeterminado ? " indeterminado" : ""}" style="width:${indeterminado ? "" : pct + "%"}"></div></div>
+          <div class="progress-meta">
+            <span class="meta-velocidad">${n.velocidad || ""}</span>
+            <span class="meta-eta">${indeterminado ? "" : pct.toFixed(0) + "%"}${n.eta ? " &middot; " + n.eta : ""}</span>
+          </div>`;
+        if (n.cancelable && !terminada) {
+          cuerpoHtml += `<div class="notif-actions"><button class="notif-btn cancelar" data-accion="cancelar">Cancelar</button></div>`;
+        }
+      } else if (n.tipo === "simple" && n.botones && n.botones.length && !terminada) {
+        cuerpoHtml += `<div class="notif-actions">` +
+          n.botones.map((b) => `<button class="notif-btn" data-accion="boton" data-valor="${String(b).replace(/"/g, "&quot;")}">${b}</button>`).join("") +
+          `</div>`;
+      }
+
+      el.innerHTML = `
+        <div class="notif-icon ${tono} ${claseSpin}">${iconoHtml}</div>
+        <div class="notif-body">${cuerpoHtml}</div>
+        <button class="notif-close" aria-label="Cerrar">&times;</button>
+      `;
+
+      el.querySelectorAll("[data-accion]").forEach((btn) => {
+        btn.addEventListener("click", () => enviarAccion(n.id, btn.dataset.accion, btn.dataset.valor));
+      });
+      el.querySelector(".notif-close").addEventListener("click", () => enviarAccion(n.id, "cerrar"));
+
+      // Para que la ventana Electron sea "click-through" en las zonas
+      // transparentes pero clickeable arriba de cada tarjeta.
+      el.addEventListener("mouseenter", () => window.overlayAPI?.reportarHover(true));
+      el.addEventListener("mouseleave", () => window.overlayAPI?.reportarHover(false));
+
+      return el;
+    }
+
+    function actualizarElemento(el, n) {
+      const titulo = el.querySelector(".notif-title");
+      if (titulo && titulo.textContent !== n.mensaje) titulo.textContent = n.mensaje;
+
+      if (n.tipo === "progreso") {
+        const fill = el.querySelector(".progress-fill");
+        const eta = el.querySelector(".meta-eta");
+        const vel = el.querySelector(".meta-velocidad");
+        const indeterminado = n.progreso == null;
+        if (fill) {
+          fill.classList.toggle("indeterminado", indeterminado);
+          fill.style.width = indeterminado ? "" : Math.min(100, Math.max(0, n.progreso)) + "%";
+        }
+        if (vel) vel.textContent = n.velocidad || "";
+        if (eta) eta.innerHTML = (indeterminado ? "" : n.progreso.toFixed(0) + "%") + (n.eta ? " &middot; " + n.eta : "");
+      }
+
+      const terminada = n.estado !== "activa";
+      if (terminada) {
+        const icono = el.querySelector(".notif-icon");
+        if (icono && icono.classList.contains("spinning")) {
+          icono.classList.remove("spinning");
+          icono.classList.toggle("ok", n.estado === "completada");
+          icono.classList.toggle("bad", n.estado !== "completada");
+          icono.innerHTML = n.estado === "completada" ? iconoOkSVG() : iconoBadSVG();
+        }
+        const acciones = el.querySelector(".notif-actions");
+        if (acciones) acciones.remove();
+      }
+    }
+
+    async function refrescar() {
+      let lista = [];
+      try {
+        const r = await fetch("/estado");
+        lista = await r.json();
+      } catch { return; } // el servidor puede tardar un toque en levantar
+
+      const idsActuales = new Set(lista.map((n) => n.id));
+
+      for (const n of lista) {
+        if (!elementos.has(n.id)) {
+          const el = crearElemento(n);
+          stack.insertBefore(el, stack.firstChild);
+          elementos.set(n.id, el);
+          estadosPrevios.set(n.id, n.estado);
+          requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("show")));
+        } else {
+          const anterior = estadosPrevios.get(n.id);
+          actualizarElemento(elementos.get(n.id), n);
+          if (anterior === "activa" && n.estado !== "activa") sonarChime();
+          estadosPrevios.set(n.id, n.estado);
+        }
+      }
+      for (const id of Array.from(elementos.keys())) {
+        if (!idsActuales.has(id)) quitarElemento(id);
+      }
+
+      // Avisa a Electron si mostrar o esconder la ventana entera.
+      window.overlayAPI?.reportarContenido(elementos.size > 0);
+    }
+
+    refrescar();
+    setInterval(refrescar, 450);
+  </script>
+</body>
+</html>

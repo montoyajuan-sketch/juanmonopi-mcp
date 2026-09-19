@@ -1,0 +1,73 @@
+{
+  "nombre": "imprimir",
+  "version": "1.0.0",
+  "descripcion": "Envía archivos PDF o imágenes a imprimir en la impresora conectada a la PC. Usa SumatraPDF para PDFs (color/BN, copias, dúplex, orientación) y compone imágenes sobre una hoja del tamaño elegido antes de mandarlas.",
+  "main": "main.py",
+  "puerto": "asignado dinámicamente por el loader (modules/registro.js) al arrancar, no es fijo",
+
+  "funciones": [
+    {
+      "nombre": "impresoras",
+      "descripcion": "Lista las impresoras instaladas en la PC, numeradas (1, 2, 3...) para poder referirse a ellas por código en vez de escribir el nombre completo.",
+      "expuestaComo": {
+        "mcp": "impresoras",
+        "rest": "GET /api/imprimir/impresoras (no implementado, solo MCP por ahora)"
+      },
+      "parametros": {},
+      "retorna": "Texto con una impresora por línea, formato 'N. nombre', marcando cuál es la predeterminada."
+    },
+    {
+      "nombre": "imprimir_archivo",
+      "descripcion": "Manda a imprimir un archivo (PDF o imagen) con las opciones dadas (impresora, copias, orientación, papel, color, dúplex). El archivo se puede pasar por ruta (si ya está en el disco del host) o en base64.",
+      "expuestaComo": {
+        "mcp": "imprimir_archivo",
+        "rest": "POST /api/imprimir"
+      },
+      "parametros": {
+        "ruta": { "tipo": "string", "requerido": false, "descripcion": "Ruta del archivo en el disco del host. Preferido cuando el archivo ya está en la PC: evita mandar el contenido completo en la llamada. Si se da, 'archivoBase64' no hace falta." },
+        "archivoBase64": { "tipo": "string", "requerido": false, "descripcion": "Contenido del archivo codificado en base64. Requerido solo si no se manda 'ruta'." },
+        "nombre": { "tipo": "string", "requerido": false, "descripcion": "Nombre del archivo con extensión. Si se usa 'ruta' y no se manda, se toma el nombre del archivo en esa ruta." },
+        "impresora": { "tipo": "string|number", "requerido": false, "default": "HP Ink Tank Wireless 410 series", "descripcion": "Nombre exacto de la impresora, o el código numérico que devuelve la tool 'impresoras'." },
+        "copias": { "tipo": "number", "requerido": false, "default": 1 },
+        "orientacion": { "tipo": "enum", "valores": ["portrait", "landscape"], "requerido": false, "default": "portrait" },
+        "papel": { "tipo": "enum", "valores": ["letter", "legal", "a4", "a3"], "requerido": false, "default": "letter" },
+        "color": { "tipo": "enum", "valores": ["color", "bw"], "requerido": false, "default": "color" },
+        "duplex": { "tipo": "enum", "valores": ["no", "long", "short"], "requerido": false, "default": "no" }
+      },
+      "retorna": {
+        "ok": "boolean",
+        "archivo": "string (nombre final guardado)",
+        "returncode": "number (código de salida de Sumatra, solo para PDFs)",
+        "stderr": "string (si hubo error de Sumatra)"
+      }
+    }
+  ],
+
+  "auth": {
+    "mcp": "sesion (token de iniciar_sesion)",
+    "rest": "api_key (header x-api-key)"
+  },
+
+  "componentes": {
+    "node": {
+      "requiere": ["module.js registra la tool MCP y la ruta REST, y levanta el worker python si no está corriendo"]
+    },
+    "python": {
+      "version_minima": "3.10",
+      "paquetes": ["pywin32", "Pillow"]
+    },
+    "externos": [
+      {
+        "nombre": "SumatraPDF",
+        "ruta": "./SumatraPDF/SumatraPDF-3.5.2-64.exe",
+        "autocontenido": true,
+        "notas": "Portable, viene incluido dentro del módulo, no depende de instalación externa."
+      }
+    ]
+  },
+
+  "endpointsInternos": [
+    { "metodo": "GET", "ruta": "/salud", "descripcion": "Chequeo de que el worker python está activo" },
+    { "metodo": "POST", "ruta": "/imprimir", "descripcion": "Recibe multipart/form-data con el archivo y las opciones" }
+  ]
+}

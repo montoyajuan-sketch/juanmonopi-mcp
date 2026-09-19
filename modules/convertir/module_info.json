@@ -1,0 +1,46 @@
+{
+  "nombre": "convertir",
+  "version": "1.0.0",
+  "descripcion": "Convierte archivos entre cientos de formatos (documentos, imágenes, audio, video, código, datos) usando convert.to.it (proyecto p2r3/convert). Como esa herramienta es 100% client-side (corre en WASM dentro del navegador, sin API de servidor), este módulo la automatiza con Playwright/Chromium headless en vez de llamarla por HTTP.",
+  "main": "main.py",
+  "puerto": "asignado dinámicamente por el loader (modules/registro.js) al arrancar, no es fijo",
+
+  "notaTecnica": "Flujo verificado manualmente el 2026-09-13: subir archivo a #uploadFile -> abrir selector de formato de salida -> buscar extensión -> click en el botón de formato -> click en 'Convert' -> esperar evento de descarga del navegador. Si p2r3/convert cambia su interfaz, este módulo puede romperse (selectores basados en roles/texto visible, no en clases CSS, para ser lo más resistente posible a cambios menores).",
+
+  "funciones": [
+    {
+      "nombre": "convertir_archivo",
+      "descripcion": "Recibe un archivo en base64 y el formato de salida deseado, y devuelve el archivo convertido.",
+      "expuestaComo": { "mcp": "convertir_archivo", "rest": "POST /api/convertir" },
+      "parametros": {
+        "archivoBase64": { "tipo": "string", "requerido": true },
+        "nombre": { "tipo": "string", "requerido": true, "descripcion": "Nombre con extensión original, ej: 'foto.png'" },
+        "formatoSalida": { "tipo": "string", "requerido": true, "descripcion": "Extensión deseada sin punto, ej: 'pdf', 'docx', 'mp3'" }
+      },
+      "retorna": "archivo binario convertido (REST: descarga directa; MCP: como resource embebido)"
+    }
+  ],
+
+  "auth": { "mcp": "sesion (token de iniciar_sesion)", "rest": "api_key (header x-api-key)" },
+
+  "componentes": {
+    "python": { "version_minima": "3.10", "paquetes": ["playwright"] },
+    "externos": [
+      {
+        "nombre": "Chromium (via Playwright)",
+        "instalado_con": "python -m playwright install chromium",
+        "notas": "Se mantiene un navegador headless persistente para no pagar ~10s de arranque en cada conversión."
+      },
+      {
+        "nombre": "convert.to.it",
+        "tipo": "servicio web de terceros (p2r3/convert)",
+        "notas": "No hay API propia; se automatiza la interfaz web real."
+      }
+    ]
+  },
+
+  "endpointsInternos": [
+    { "metodo": "GET", "ruta": "/salud", "descripcion": "Chequeo de que el worker python está activo" },
+    { "metodo": "POST", "ruta": "/convertir", "descripcion": "multipart/form-data con 'file' y 'formatoSalida'. Devuelve el archivo binario con el nombre en el header X-Nombre-Archivo" }
+  ]
+}

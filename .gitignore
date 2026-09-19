@@ -1,0 +1,31 @@
+# Estado personal de una instalacion en particular -- se genera solo al
+# arrancar el server, nunca deberia ir al repo.
+usuarios.json
+apikey.json
+oauth-clients.json
+oauth-tokens.json
+tunnel-url.txt
+codigo-actual.txt
+whitelist.json
+
+# Dependencias de Python -- las arma instalar-dependencias-python.ps1 en
+# cada PC (python-embed es portable pero pesa, no tiene sentido versionarlo;
+# vendor/venv son especificos de cada maquina).
+python-embed/
+modules/*/vendor/
+modules/*/venv/
+modules/*/__pycache__/
+modules/*/_temp/
+
+# node_modules y node-embed SI se versionan a proposito (son livianos, sin
+# binarios nativos, y el objetivo es "cloná y corré" sin instalar nada) --
+# no los agregues aca.
+
+# Archivos que generan los modulos al usarse
+modules/escanear/escaneos_recibidos/*
+!modules/escanear/escaneos_recibidos/.gitkeep
+modules/imprimir/archivos_recibidos/*
+!modules/imprimir/archivos_recibidos/.gitkeep
+
+# Logs y temporales
+*.log

@@ -1,0 +1,60 @@
+{
+  "nombre": "notificacion",
+  "version": "2.0.0",
+  "descripcion": "Muestra notificaciones tipo toast (abajo a la derecha) con mensaje y botones, o notificaciones de progreso con barra actualizable en vivo. Todas se apilan en una misma ventana, cada una identificada por un id.",
+  "main": null,
+
+  "funciones": [
+    {
+      "nombre": "notificar",
+      "descripcion": "Abre una ventanita con un mensaje y botones, espera la eleccion del usuario.",
+      "expuestaComo": { "mcp": "notificar", "rest": "POST /api/notificar" },
+      "parametros": {
+        "mensaje": { "tipo": "string", "requerido": true },
+        "botones": { "tipo": "string[]", "requerido": false, "descripcion": "Si se omite, se muestra un solo boton 'OK'." },
+        "timeoutMs": { "tipo": "number", "requerido": false, "descripcion": "Default 120000 (2 min)" }
+      },
+      "retorna": "texto del boton elegido, o null si no respondio a tiempo"
+    },
+    {
+      "nombre": "notificar_progreso_crear",
+      "descripcion": "Crea una notificacion con barra de progreso. No bloquea: devuelve el id enseguida.",
+      "expuestaComo": { "mcp": "notificar_progreso_crear", "rest": "POST /api/notificar/progreso" },
+      "parametros": {
+        "id": { "tipo": "string", "requerido": false, "descripcion": "Si se omite, se genera uno." },
+        "mensaje": { "tipo": "string", "requerido": true },
+        "progreso": { "tipo": "number", "requerido": false, "descripcion": "0-100. Si se omite, barra indeterminada." },
+        "cancelable": { "tipo": "boolean", "requerido": false, "descripcion": "Muestra boton Cancelar mientras esta activa." }
+      },
+      "retorna": "id de la notificacion creada"
+    },
+    {
+      "nombre": "notificar_progreso_actualizar",
+      "descripcion": "Actualiza mensaje, porcentaje, velocidad y/o eta de una notificacion de progreso existente. Se puede llamar varias veces seguidas.",
+      "expuestaComo": { "mcp": "notificar_progreso_actualizar", "rest": "PATCH /api/notificar/progreso/:id" },
+      "parametros": {
+        "id": { "tipo": "string", "requerido": true },
+        "mensaje": { "tipo": "string", "requerido": false },
+        "progreso": { "tipo": "number", "requerido": false },
+        "velocidad": { "tipo": "string", "requerido": false, "descripcion": "Texto libre, ej: '1.2 MB/s'" },
+        "eta": { "tipo": "string", "requerido": false, "descripcion": "Texto libre, ej: 'restan 10 s'" }
+      },
+      "retorna": "ok: true/false"
+    },
+    {
+      "nombre": "notificar_finalizar",
+      "descripcion": "Marca una notificacion (simple o de progreso) como completada, fallida o cancelada. Se cierra sola despues de unos segundos.",
+      "expuestaComo": { "mcp": "notificar_finalizar", "rest": "POST /api/notificar/:id/finalizar" },
+      "parametros": {
+        "id": { "tipo": "string", "requerido": true },
+        "estado": { "tipo": "string", "requerido": false, "descripcion": "completada | fallida | cancelada. Default: completada" },
+        "mensaje": { "tipo": "string", "requerido": false, "descripcion": "Reemplaza el texto al finalizar." }
+      },
+      "retorna": "ok: true/false"
+    }
+  ],
+
+  "auth": { "mcp": "sesion (token de iniciar_sesion)", "rest": "api_key (header x-api-key)" },
+
+  "componentes": { "externos": ["Google Chrome o Microsoft Edge instalado (usa --app=)"] }
+}

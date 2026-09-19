@@ -1,0 +1,55 @@
+{
+  "nombre": "control_remoto",
+  "version": "1.0.0",
+  "descripcion": "Controla el mouse, teclado y ventanas de la PC de forma remota (pyautogui + pygetwindow). Sirve para interactuar con diálogos, cerrar ventanas colgadas (como el error de SumatraPDF que tuvimos), o automatizar clicks/escritura.",
+  "main": "main.py",
+  "puerto": "asignado dinámicamente por el loader (modules/registro.js) al arrancar, no es fijo",
+
+  "advertencia": "Módulo con control total del mouse/teclado. El acceso ya está protegido por la sesión (MCP) o la API key (REST) de Node, pero úsalo con cuidado: una acción mal apuntada puede interferir con lo que el usuario está haciendo en ese momento en la PC.",
+
+  "funciones": [
+    {
+      "nombre": "control_remoto",
+      "descripcion": "Ejecuta una acción de control remoto sobre la PC.",
+      "expuestaComo": { "mcp": "control_remoto", "rest": "POST /api/control" },
+      "parametros": {
+        "accion": {
+          "tipo": "enum",
+          "valores": ["mover_mouse", "click", "escribir", "tecla", "listar_ventanas", "activar_ventana", "cerrar_ventana", "posicion_mouse", "ventana_activa", "arrastrar"],
+          "requerido": true
+        },
+        "parametros": {
+          "tipo": "object",
+          "requerido": false,
+          "descripcion": "Depende de la acción. mover_mouse:{x,y,duracion}. click:{x,y,boton,clicks}. escribir:{texto,intervalo}. tecla:{tecla} (string o array para combinación, ej ['ctrl','c']). activar_ventana/cerrar_ventana:{titulo}. arrastrar:{x1,y1,x2,y2,boton,duracion} o arrastrar:{puntos:[{x,y},...],boton}."
+        }
+      },
+      "retorna": "objeto con { ok, ...datos según la acción }"
+    },
+    {
+      "nombre": "verificar_coordenada",
+      "descripcion": "Toma un screenshot real y devuelve un PNG con una cruz (colores invertidos) marcando (x,y). Sirve para confirmar visualmente una coordenada antes de hacer click ahí, en vez de adivinar a ciegas. Integrado desde crosshair_check.py.",
+      "expuestaComo": { "mcp": "verificar_coordenada", "rest": "GET /api/control/verificar_coordenada" },
+      "parametros": {
+        "x": { "tipo": "number", "requerido": true },
+        "y": { "tipo": "number", "requerido": true },
+        "arm": { "tipo": "number", "requerido": false, "default": 30, "descripcion": "Largo de cada brazo de la cruz en px" },
+        "thickness": { "tipo": "number", "requerido": false, "default": 2, "descripcion": "Grosor de la cruz en px" }
+      },
+      "retorna": "imagen PNG (base64 en MCP, binario directo en REST)"
+    }
+  ],
+
+  "auth": { "mcp": "sesion (token de iniciar_sesion)", "rest": "api_key (header x-api-key)" },
+
+  "componentes": {
+    "python": { "version_minima": "3.10", "paquetes": ["pyautogui", "pygetwindow", "Pillow"] },
+    "externos": []
+  },
+
+  "endpointsInternos": [
+    { "metodo": "GET", "ruta": "/salud", "descripcion": "Chequeo de que el worker python está activo, lista las acciones disponibles" },
+    { "metodo": "POST", "ruta": "/accion", "descripcion": "Body JSON: { accion, parametros }" },
+    { "metodo": "GET", "ruta": "/verificar_coordenada", "descripcion": "Query params x,y requeridos; arm,thickness opcionales. Devuelve un PNG" }
+  ]
+}

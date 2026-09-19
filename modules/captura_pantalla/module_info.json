@@ -1,0 +1,34 @@
+{
+  "nombre": "captura_pantalla",
+  "version": "1.0.0",
+  "descripcion": "Toma capturas de pantalla de la PC, completas o de una región específica. Útil para ver diálogos de error o el estado actual del escritorio sin estar físicamente ahí (por ejemplo, diagnosticar el diálogo de error de SumatraPDF).",
+  "main": "main.py",
+  "puerto": "asignado dinámicamente por el loader (modules/registro.js) al arrancar, no es fijo",
+
+  "funciones": [
+    {
+      "nombre": "capturar_pantalla",
+      "descripcion": "Devuelve un PNG con la pantalla completa (todos los monitores) o una región dada.",
+      "expuestaComo": { "mcp": "capturar_pantalla", "rest": "GET /api/captura" },
+      "parametros": {
+        "x": { "tipo": "number", "requerido": false, "descripcion": "Esquina superior izquierda, solo si se quiere una región" },
+        "y": { "tipo": "number", "requerido": false },
+        "w": { "tipo": "number", "requerido": false, "descripcion": "Ancho de la región" },
+        "h": { "tipo": "number", "requerido": false, "descripcion": "Alto de la región" }
+      },
+      "retorna": "imagen PNG (base64 en MCP, binario directo en REST)"
+    }
+  ],
+
+  "auth": { "mcp": "sesion (token de iniciar_sesion)", "rest": "api_key (header x-api-key)" },
+
+  "componentes": {
+    "python": { "version_minima": "3.10", "paquetes": ["Pillow"] },
+    "externos": []
+  },
+
+  "endpointsInternos": [
+    { "metodo": "GET", "ruta": "/salud", "descripcion": "Chequeo de que el worker python está activo" },
+    { "metodo": "GET", "ruta": "/capturar", "descripcion": "Query params opcionales x,y,w,h para una región; sin ellos, captura todo" }
+  ]
+}

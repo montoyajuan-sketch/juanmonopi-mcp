@@ -1,0 +1,44 @@
+{
+  "nombre": "ocr",
+  "version": "1.0.0",
+  "descripcion": "Extrae texto de imágenes o PDFs (escaneados) usando Tesseract OCR. Los PDFs se rasterizan página por página con PyMuPDF antes de reconocer el texto.",
+  "main": "main.py",
+  "puerto": "asignado dinámicamente por el loader (modules/registro.js) al arrancar, no es fijo",
+
+  "funciones": [
+    {
+      "nombre": "reconocer_texto_ocr",
+      "descripcion": "Recibe un archivo (imagen o PDF) en base64 y devuelve el texto reconocido.",
+      "expuestaComo": { "mcp": "reconocer_texto_ocr", "rest": "POST /api/ocr" },
+      "parametros": {
+        "archivoBase64": { "tipo": "string", "requerido": true },
+        "nombre": { "tipo": "string", "requerido": true },
+        "idioma": { "tipo": "string", "requerido": false, "default": "spa+eng", "descripcion": "Códigos de idioma de Tesseract, ej: 'spa', 'eng', 'spa+eng'" }
+      },
+      "retorna": {
+        "texto": "string (texto completo reconocido)",
+        "paginas": "array (solo si es PDF: texto por página)",
+        "tipo": "'imagen' | 'pdf'"
+      }
+    }
+  ],
+
+  "auth": { "mcp": "sesion (token de iniciar_sesion)", "rest": "api_key (header x-api-key)" },
+
+  "componentes": {
+    "python": { "version_minima": "3.10", "paquetes": ["pytesseract", "Pillow", "PyMuPDF"] },
+    "externos": [
+      {
+        "nombre": "Tesseract-OCR",
+        "ruta": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+        "autocontenido": false,
+        "notas": "Instalado vía Chocolatey (choco install tesseract) porque el instalador directo de UB-Mannheim bloqueaba la descarga con 403. Incluye datos de idioma inglés y español por defecto."
+      }
+    ]
+  },
+
+  "endpointsInternos": [
+    { "metodo": "GET", "ruta": "/salud", "descripcion": "Chequeo de que el worker python está activo" },
+    { "metodo": "POST", "ruta": "/ocr", "descripcion": "Recibe multipart/form-data con el archivo y el idioma opcional" }
+  ]
+}
