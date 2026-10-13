@@ -73,3 +73,26 @@ https://github.com/UB-Mannheim/tesseract/wiki
 - El acceso te da control bastante amplio de la PC (archivos, shell,
   mouse/teclado). Usalo bajo tu propio criterio — este proyecto no filtra
   ni sandboxea comandos.
+
+## Módulos opcionales (requieren configuración)
+
+Estos módulos se cargan solos, pero no hacen nada útil hasta que los
+configures. Si les falta algo, se desactivan sin tirar el servidor.
+
+### `discord` — administrar servidores de Discord
+1. Crea un bot en https://discord.com/developers/applications y copia su token.
+2. En `modules/discord/`: copia `.env.example` a `.env` y completa
+   `DISCORD_TOKEN`. Opcional: `DISCORD_ALLOWED_GUILDS` (limita a ciertos
+   servidores) y `DISCORD_LOG_CHANNEL_ID` (canal donde se registra cada
+   herramienta ejecutada).
+3. Instala sus dependencias una vez: `npm install --omit=dev` dentro de
+   `modules/discord`.
+
+Expone herramientas con permisos altos (banear, borrar canales, etc.): usa un
+bot con los permisos mínimos que necesites.
+
+### `idukay_integration` — notificaciones de Idukay
+Reutiliza una sesión ya iniciada en el navegador. Copia
+`modules/idukay_integration/sesion.example.json` a `sesion.json` y completa
+los headers capturados (DevTools → Network → "Copy as fetch"). Los valores
+vencen y hay que renovarlos. `sesion.json` está en `.gitignore`: no lo subas.

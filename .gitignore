@@ -27,9 +27,23 @@ modules/escanear/escaneos_recibidos/*
 modules/imprimir/archivos_recibidos/*
 !modules/imprimir/archivos_recibidos/.gitkeep
 
+# cloudflared se autoactualiza solo al arrancar (ver asegurarCloudflaredActualizado()
+# en index.js) -- no tiene sentido versionar un binario que se pisa solo.
+cloudflared.exe
+cloudflared.version
+
 # Logs y temporales
 *.log
 
 node-embed/node_modules/
 node-embed/corepack
 node-embed/corepack.cmd
+
+# Secretos y sesiones de modulos opcionales -- NUNCA al repo
+modules/discord/.env
+modules/discord/node_modules/
+modules/discord/*.tgz
+modules/idukay_integration/sesion.json
+modules/idukay_integration/descargas/
+token*.txt
+*api-key*.txt
