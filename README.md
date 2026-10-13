@@ -80,6 +80,11 @@ Estos módulos se cargan solos, pero no hacen nada útil hasta que los
 configures. Si les falta algo, se desactivan sin tirar el servidor.
 
 ### `discord` — administrar servidores de Discord
+Créditos: las herramientas de Discord vienen del proyecto
+[PaSympa/discord-mcp](https://github.com/PaSympa/discord-mcp) (licencia MIT,
+autor: PaSympa). Su código está en `modules/discord/` junto con su `LICENSE`, y
+`modules/discord/module.js` es el adaptador que lo conecta a este servidor.
+
 1. Crea un bot en https://discord.com/developers/applications y copia su token.
 2. En `modules/discord/`: copia `.env.example` a `.env` y completa
    `DISCORD_TOKEN`. Opcional: `DISCORD_ALLOWED_GUILDS` (limita a ciertos
