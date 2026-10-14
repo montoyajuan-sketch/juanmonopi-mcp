@@ -42,8 +42,7 @@ node-embed/corepack.cmd
 # Secretos y sesiones de modulos opcionales -- NUNCA al repo
 modules/discord/.env
 modules/discord/node_modules/
+modules/notificacion/electron-overlay/node_modules/
 modules/discord/*.tgz
-modules/idukay_integration/sesion.json
-modules/idukay_integration/descargas/
 token*.txt
 *api-key*.txt
