@@ -11,12 +11,18 @@ import { spawn } from "child_process";
 import AdmZip from "adm-zip";
 import { asignarPuertoLibre } from "./modules/registro.js";
 import { obtenerOCrearApiKey, crearVerificador } from "./modules/apikey.js";
+import { cargarConfiguracion, iniciarPanelConfiguracion } from "./configuracion.js";
+
+// config.json (lo edita el panel de configuracion). Las variables de entorno
+// siguen teniendo prioridad sobre este archivo.
+const CONFIG = cargarConfiguracion();
+const modulosCarpetas = [];
 
 // ============================================================
 // CONFIGURACION GENERAL
 // ============================================================
 
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || CONFIG.servidor.puerto);
 
 // Estas tres arrancan apuntando a localhost, y se actualizan solas apenas
 // cloudflared nos da la URL publica real (ver iniciarCloudflared() mas abajo).
@@ -24,7 +30,8 @@ const PORT = Number(process.env.PORT || 3000);
 // prioridad siempre y nunca se pisan con la URL random del tunel.
 let URL_PUBLICA_BASE =
   process.env.URL_PUBLICA_BASE ||
-  `http://localhost:${Number(process.env.PORT || 3000)}`;
+  (CONFIG.tunel.modo !== "rapido" ? CONFIG.tunel.urlPublica : "") ||
+  `http://localhost:${PORT}`;
 
 let URL_PUBLICA_MCP =
   process.env.URL_PUBLICA ||
@@ -35,14 +42,14 @@ let URL_OAUTH_ISSUER =
   URL_PUBLICA_BASE;
 
 const SESSION_MINUTOS =
-  Number(process.env.SESSION_MINUTOS || 120);
+  Number(process.env.SESSION_MINUTOS || CONFIG.servidor.sesionMinutos);
 
 // OAuth
 const ACCESS_TOKEN_MINUTOS =
-  Number(process.env.ACCESS_TOKEN_MINUTOS || 60);
+  Number(process.env.ACCESS_TOKEN_MINUTOS || CONFIG.servidor.accessTokenMinutos);
 
 const REFRESH_TOKEN_DIAS =
-  Number(process.env.REFRESH_TOKEN_DIAS || 30);
+  Number(process.env.REFRESH_TOKEN_DIAS || CONFIG.servidor.refreshTokenDias);
 
 const OAUTH_CODE_MINUTOS =
   Number(process.env.OAUTH_CODE_MINUTOS || 5);
@@ -2508,7 +2515,9 @@ async function cargarModulos() {
       }
     )
     .filter(
-      (d) => d.isDirectory()
+      (d) =>
+        d.isDirectory() &&
+        !CONFIG.modulos.deshabilitados.includes(d.name)
     );
 
   for (
@@ -2535,6 +2544,7 @@ async function cargarModulos() {
       ).default;
 
     modulosCargados.push(mod);
+    modulosCarpetas.push(carpeta.name);
   }
 
   const puertosUsados =
@@ -3875,7 +3885,169 @@ app.get(
 // Si alguien quiere una URL fija para siempre, la alternativa es armar un
 // tunel nombrado con su propio dominio (ver el README).
 
+// ============================================================
+// AUTO-ACTUALIZACION DE CLOUDFLARED
+// ============================================================
+// En vez de versionar cloudflared.exe en el repo (queda viejo), se chequea
+// la version mas nueva contra la API de GitHub (llamada chica, un JSON) y
+// solo se descarga el binario (~40MB) si hace falta: no existe todavia, o
+// hay una version mas nueva que la que ya tenemos guardada en
+// cloudflared.version. Si GitHub no responde (sin internet, rate limit) y
+// ya hay una copia previa, se sigue usando esa sin cortar el arranque.
+
+const CLOUDFLARED_API_LATEST =
+  "https://api.github.com/repos/cloudflare/cloudflared/releases/latest";
+
+const CLOUDFLARED_DESCARGA_LATEST =
+  "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe";
+
+async function asegurarCloudflaredActualizado() {
+
+  const rutaExe =
+    path.join(process.cwd(), "cloudflared.exe");
+
+  const rutaVersion =
+    path.join(process.cwd(), "cloudflared.version");
+
+  let versionInstalada = null;
+  try {
+    versionInstalada = fs.readFileSync(rutaVersion, "utf8").trim();
+  } catch {}
+
+  let versionDisponible = null;
+  try {
+    const resp = await fetch(CLOUDFLARED_API_LATEST, {
+      headers: { "User-Agent": "mi-mcp-server" }
+    });
+    if (resp.ok) {
+      const datos = await resp.json();
+      versionDisponible = datos.tag_name || null;
+    }
+  } catch (err) {
+    console.error(
+      "No se pudo chequear la version de cloudflared:",
+      err.message
+    );
+  }
+
+  if (
+    fs.existsSync(rutaExe) &&
+    versionDisponible &&
+    versionDisponible === versionInstalada
+  ) {
+    console.log(`cloudflared ya esta al dia (${versionInstalada}).`);
+    return;
+  }
+
+  if (!versionDisponible) {
+    if (fs.existsSync(rutaExe)) {
+      console.log(
+        "No se pudo chequear si hay una version nueva de cloudflared, se sigue usando la que ya esta instalada."
+      );
+    } else {
+      console.error(
+        "No hay cloudflared.exe y no se pudo descargar (sin internet o GitHub no respondio). El tunel no va a poder arrancar."
+      );
+    }
+    return;
+  }
+
+  console.log(`Descargando cloudflared ${versionDisponible}...`);
+
+  try {
+    const resp = await fetch(CLOUDFLARED_DESCARGA_LATEST);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    fs.writeFileSync(rutaExe, buffer);
+    fs.writeFileSync(rutaVersion, versionDisponible, "utf8");
+
+    console.log(`cloudflared actualizado a ${versionDisponible}.`);
+  } catch (err) {
+    console.error("Fallo la descarga de cloudflared:", err.message);
+    if (!fs.existsSync(rutaExe)) {
+      console.error(
+        "No queda ninguna copia utilizable de cloudflared. El tunel no va a arrancar."
+      );
+    }
+  }
+}
+
+let cfProceso = null;
+let cfLimpiezaRegistrada = false;
+let modoTunelActual = "rapido";
+
+// Actualiza las URLs publicas (respeta las variables de entorno, que mandan).
+function aplicarUrlPublica(base) {
+
+  if (process.env.URL_PUBLICA_BASE)
+    return;
+
+  URL_PUBLICA_BASE =
+    String(base).replace(/\/+$/, "");
+
+  URL_PUBLICA_MCP =
+    process.env.URL_PUBLICA ||
+    `${URL_PUBLICA_BASE}/mcp`;
+
+  URL_OAUTH_ISSUER =
+    process.env.OAUTH_ISSUER ||
+    URL_PUBLICA_BASE;
+}
+
+function mostrarUrlsPublicas() {
+
+  console.log("\n==================================================");
+  console.log(" MCP publico:");
+  console.log(" " + URL_PUBLICA_MCP);
+  console.log("\n OAuth issuer:");
+  console.log(" " + URL_OAUTH_ISSUER);
+  console.log("\n OAuth metadata:");
+  console.log(" " + `${URL_OAUTH_ISSUER}/.well-known/oauth-authorization-server`);
+  console.log("==================================================\n");
+
+  try {
+    fs.writeFileSync(
+      path.join(process.cwd(), "tunnel-url.txt"),
+      URL_PUBLICA_MCP,
+      "utf8"
+    );
+  } catch {}
+}
+
+// Descarga/actualiza cloudflared solo si hace falta (o si la config lo pide).
+async function prepararCloudflared(t) {
+
+  if (t.modo === "ninguno")
+    return;
+
+  const existe =
+    fs.existsSync(path.join(process.cwd(), "cloudflared.exe"));
+
+  if (t.actualizarCloudflared || !existe) {
+    console.log("Chequeando version de cloudflared...");
+    await asegurarCloudflaredActualizado();
+  }
+}
+
 function iniciarCloudflared() {
+
+  // Se relee config.json cada vez: asi "reiniciar tunel" aplica los cambios.
+  const t =
+    cargarConfiguracion().tunel;
+
+  modoTunelActual =
+    t.modo;
+
+  if (t.modo === "ninguno") {
+
+    aplicarUrlPublica(
+      t.urlPublica || `http://localhost:${PORT}`
+    );
+
+    console.log("Tunel desactivado (config.json). El servidor solo responde en local.");
+    return null;
+  }
 
   const rutaLocal =
     path.join(
@@ -3888,25 +4060,65 @@ function iniciarCloudflared() {
       ? rutaLocal
       : "cloudflared";
 
-  // --protocol http2: el default (QUIC) puede fallar en ciertas redes/routers.
-  const cf =
-    spawn(
-      ejecutable,
+  const env =
+    { ...process.env };
+
+  let args;
+
+  if (t.modo === "nombrado") {
+
+    if (!t.token) {
+      console.error(
+        "Tunel con nombre: falta el token. Configuralo en el panel de configuracion."
+      );
+      return null;
+    }
+
+    args =
+      [
+        "tunnel",
+        "--no-autoupdate",
+        "run"
+      ];
+
+    env.TUNNEL_TOKEN =
+      t.token;
+
+    if (t.protocolo && t.protocolo !== "auto")
+      env.TUNNEL_TRANSPORT_PROTOCOL =
+        t.protocolo;
+
+    if (t.urlPublica)
+      aplicarUrlPublica(t.urlPublica);
+
+  } else {
+
+    // --protocol http2: el default (QUIC) puede fallar en ciertas redes/routers.
+    args =
       [
         "tunnel",
         "--url",
-        `http://localhost:${PORT}`,
-        "--protocol",
-        "http2"
-      ],
+        `http://localhost:${PORT}`
+      ];
+
+    if (t.protocolo && t.protocolo !== "auto")
+      args.push("--protocol", t.protocolo);
+  }
+
+  const cf =
+    spawn(
+      ejecutable,
+      args,
       {
-        shell: false
+        shell: false,
+        env
       }
     );
 
+  cfProceso = cf;
+
   // Excluimos "api.trycloudflare.com": es el endpoint de control interno,
-  // no el subdominio publico del tunel (que siempre trae varias palabras
-  // separadas por guiones, ej: palabra-palabra-palabra.trycloudflare.com).
+  // no el subdominio publico del tunel.
   const regexUrl =
     /https:\/\/(?!api\.)[a-zA-Z0-9-]+\.trycloudflare\.com/;
 
@@ -3938,6 +4150,9 @@ function iniciarCloudflared() {
         }
       }
 
+      if (t.modo !== "rapido")
+        return;
+
       const match =
         texto.match(regexUrl);
 
@@ -3948,75 +4163,18 @@ function iniciarCloudflared() {
 
         avisoMostrado = true;
 
-        // Si el usuario fijo las URLs a mano por variable de entorno,
-        // eso tiene prioridad y no se pisa con la URL random del tunel.
-        if (
-          !process.env.URL_PUBLICA_BASE
-        ) {
+        aplicarUrlPublica(match[0]);
 
-          URL_PUBLICA_BASE =
-            match[0];
-
-          URL_PUBLICA_MCP =
-            process.env.URL_PUBLICA ||
-            `${URL_PUBLICA_BASE}/mcp`;
-
-          URL_OAUTH_ISSUER =
-            process.env.OAUTH_ISSUER ||
-            URL_PUBLICA_BASE;
-        }
+        mostrarUrlsPublicas();
 
         console.log(
-          "\n=================================================="
+          " (Esta URL cambia en cada reinicio -- ver README si queres una fija)\n"
         );
-
-        console.log(
-          " MCP publico:"
-        );
-
-        console.log(
-          " " + URL_PUBLICA_MCP
-        );
-
-        console.log(
-          "\n OAuth issuer:"
-        );
-
-        console.log(
-          " " + URL_OAUTH_ISSUER
-        );
-
-        console.log(
-          "\n OAuth metadata:"
-        );
-
-        console.log(
-          " " +
-          `${URL_OAUTH_ISSUER}/.well-known/oauth-authorization-server`
-        );
-
-        console.log(
-          "\n (Esta URL cambia en cada reinicio -- ver README si queres una fija)"
-        );
-
-        console.log(
-          "==================================================\n"
-        );
-
-        try {
-
-          fs.writeFileSync(
-            path.join(
-              process.cwd(),
-              "tunnel-url.txt"
-            ),
-            URL_PUBLICA_MCP,
-            "utf8"
-          );
-
-        } catch {}
       }
     };
+
+  if (t.modo === "nombrado")
+    mostrarUrlsPublicas();
 
   cf.stdout.on(
     "data",
@@ -4033,7 +4191,7 @@ function iniciarCloudflared() {
     (err) => {
 
       console.error(
-        "No se pudo iniciar cloudflared. ¿Esta cloudflared.exe en la carpeta del proyecto? Error:",
+        "No se pudo iniciar cloudflared. Esta cloudflared.exe en la carpeta del proyecto? Error:",
         err.message
       );
     }
@@ -4051,32 +4209,76 @@ function iniciarCloudflared() {
     }
   );
 
-  const limpiar =
-    () => {
+  // Limpieza al salir: se registra una sola vez aunque se reinicie el tunel.
+  if (!cfLimpiezaRegistrada) {
 
-      if (
-        cf &&
-        !cf.killed
-      ) {
-        cf.kill();
+    cfLimpiezaRegistrada = true;
+
+    const limpiar =
+      () => {
+
+        if (
+          cfProceso &&
+          !cfProceso.killed
+        ) {
+          cfProceso.kill();
+        }
+      };
+
+    process.on(
+      "exit",
+      limpiar
+    );
+
+    process.on(
+      "SIGINT",
+      () => {
+
+        limpiar();
+        process.exit();
       }
-    };
-
-  process.on(
-    "exit",
-    limpiar
-  );
-
-  process.on(
-    "SIGINT",
-    () => {
-
-      limpiar();
-      process.exit();
-    }
-  );
+    );
+  }
 
   return cf;
+}
+
+function detenerTunel() {
+
+  return new Promise(
+    (resolve) => {
+
+      const cf =
+        cfProceso;
+
+      if (
+        !cf ||
+        cf.exitCode !== null
+      ) {
+        cfProceso = null;
+        return resolve();
+      }
+
+      cf.once("close", () => resolve());
+      cf.kill();
+
+      // Por si no cierra a tiempo.
+      setTimeout(resolve, 3000);
+    }
+  );
+}
+
+async function reiniciarTunel() {
+
+  await detenerTunel();
+
+  await prepararCloudflared(
+    cargarConfiguracion().tunel
+  );
+
+  console.log("Reiniciando tunel...");
+
+  iniciarCloudflared();
 }
 
 // ============================================================
@@ -4212,7 +4414,7 @@ async function iniciar() {
 
   app.listen(
     PORT,
-    () => {
+    async () => {
 
       console.log(
         `Servidor MCP local: http://localhost:${PORT}/mcp`
@@ -4230,8 +4432,50 @@ async function iniciar() {
         `OAuth metadata: ${URL_OAUTH_ISSUER}/.well-known/oauth-authorization-server`
       );
 
+      // Panel de configuracion (solo localhost, otro puerto, nunca por el tunel)
+      try {
+
+        await iniciarPanelConfiguracion({
+          config: CONFIG,
+          puertoServidor: PORT,
+          hooks: {
+            estado: () => ({
+              urlLocal: `http://localhost:${PORT}/mcp`,
+              urlPublicaMcp: URL_PUBLICA_MCP,
+              urlIssuer: URL_OAUTH_ISSUER,
+              tunel: {
+                modo: modoTunelActual,
+                activo: !!cfProceso && cfProceso.exitCode === null
+              },
+              modulosCargados: [...modulosCarpetas]
+            }),
+            recargarUsuario: () => {
+              usuarioConfigurado = cargarUsuario();
+            },
+            cerrarSesiones: ({ revocarOAuth } = {}) => {
+              sesiones.clear();
+              if (revocarOAuth) {
+                oauthAccessTokens.clear();
+                oauthRefreshTokens.clear();
+                oauthAuthorizationCodes.clear();
+              }
+            },
+            reiniciarTunel: () => reiniciarTunel()
+          }
+        });
+
+      } catch (err) {
+
+        console.error(
+          "No se pudo iniciar el panel de configuracion:",
+          err.message
+        );
+      }
+
+      await prepararCloudflared(CONFIG.tunel);
+
       console.log(
-        "Iniciando tunel de cloudflared..."
+        "Iniciando tunel..."
       );
 
       iniciarCloudflared();

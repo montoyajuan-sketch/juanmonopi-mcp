@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Configuración · Servidor MCP</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%230067c0'/%3E%3Cpath d='M7 9h10M7 15h10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='15' cy='9' r='2.2' fill='%230067c0' stroke='white' stroke-width='1.6'/%3E%3Ccircle cx='9' cy='15' r='2.2' fill='%230067c0' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+
+<!-- Iconos (estilo Fluent: trazo fino, extremos redondeados) -->
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8 7.5 9.5 4.4-1.5 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.9" r=".6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.6 4 5.7 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.7-4-9s1.4-6.4 4-9z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.8 6.8a8 8 0 1 0 10.4 0"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5"/><circle cx="12" cy="17" r=".6"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v4M15 3v4"/><path d="M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="6.5" rx="1.5"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.5"/><path d="M7 7.2h.01M7 16.8h.01"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/></symbol>
+</svg>
+
+<div class="app">
+
+  <!-- Panel de navegación -->
+  <aside class="nav" aria-label="Secciones">
+    <div class="nav-marca">
+      <svg class="icono icono-marca" aria-hidden="true"><use href="#i-sliders"/></svg>
+      <div>
+        <div class="nav-marca-titulo">Configuración</div>
+        <div class="nav-marca-sub">Servidor MCP</div>
+      </div>
+    </div>
+
+    <nav class="nav-lista">
+      <button class="nav-item" data-vista="inicio" type="button"><svg class="icono" aria-hidden="true"><use href="#i-home"/></svg><span>Inicio</span></button>
+      <button class="nav-item" data-vista="cuenta" type="button"><svg class="icono" aria-hidden="true"><use href="#i-user"/></svg><span>Cuenta</span></button>
+      <button class="nav-item" data-vista="tunel" type="button"><svg class="icono" aria-hidden="true"><use href="#i-cloud"/></svg><span>Túnel</span></button>
+      <button class="nav-item" data-vista="servidor" type="button"><svg class="icono" aria-hidden="true"><use href="#i-sliders"/></svg><span>Servidor</span></button>
+      <button class="nav-item" data-vista="modulos" type="button"><svg class="icono" aria-hidden="true"><use href="#i-apps"/></svg><span>Módulos</span></button>
+      <button class="nav-item" data-vista="seguridad" type="button"><svg class="icono" aria-hidden="true"><use href="#i-shield"/></svg><span>Seguridad</span></button>
+    </nav>
+
+    <div class="nav-pie">
+      <button class="nav-item" data-vista="acerca" type="button"><svg class="icono" aria-hidden="true"><use href="#i-info"/></svg><span>Acerca de</span></button>
+    </div>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="contenido" id="contenido">
+    <div class="contenido-interior">
+
+      <div id="avisos" class="avisos">
+        <div class="aviso aviso-aviso" id="aviso-tunel" hidden>
+          <svg class="icono aviso-icono" aria-hidden="true"><use href="#i-warn"/></svg>
+          <div class="aviso-texto"><strong>Cambios del túnel sin aplicar.</strong> Guardaste una configuración distinta a la que está funcionando.</div>
+          <button class="boton" type="button" id="aviso-tunel-boton">Aplicar ahora</button>
+        </div>
+        <div class="aviso aviso-aviso" id="aviso-reinicio" hidden>
+          <svg class="icono aviso-icono" aria-hidden="true"><use href="#i-warn"/></svg>
+          <div class="aviso-texto"><strong>Hay cambios que necesitan reiniciar el servidor.</strong> Puerto, duración de sesiones o módulos.</div>
+          <button class="boton" type="button" id="aviso-reinicio-boton">Reiniciar</button>
+        </div>
+      </div>
+
+      <!-- INICIO -->
+      <section class="vista" id="vista-inicio" aria-labelledby="t-inicio">
+        <h1 id="t-inicio">Inicio</h1>
+
+        <div class="heroe">
+          <div class="heroe-icono"><svg class="icono" aria-hidden="true"><use href="#i-server"/></svg></div>
+          <div class="heroe-texto">
+            <div class="heroe-titulo"><span class="punto" id="ini-punto"></span><span id="ini-estado">Comprobando…</span></div>
+            <div class="heroe-sub" id="ini-uptime">&nbsp;</div>
+          </div>
+          <div class="heroe-acciones">
+            <button class="boton" type="button" id="ini-reiniciar-tunel"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-refresh"/></svg>Reiniciar túnel</button>
+            <button class="boton" type="button" id="ini-reiniciar-servidor"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-power"/></svg>Reiniciar servidor</button>
+          </div>
+        </div>
+
+        <h2>Direcciones</h2>
+        <div class="tarjeta">
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-plug"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">Dirección local</div><div class="fila-desc valor" id="ini-local">—</div></div>
+            <div class="fila-control"><button class="boton boton-icono" type="button" data-copiar="ini-local" title="Copiar" aria-label="Copiar dirección local"><svg class="icono" aria-hidden="true"><use href="#i-copy"/></svg></button></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-globe"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">Dirección pública del MCP</div><div class="fila-desc valor" id="ini-publica">—</div></div>
+            <div class="fila-control"><button class="boton boton-icono" type="button" data-copiar="ini-publica" title="Copiar" aria-label="Copiar dirección pública"><svg class="icono" aria-hidden="true"><use href="#i-copy"/></svg></button></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">Emisor OAuth</div><div class="fila-desc valor" id="ini-issuer">—</div></div>
+            <div class="fila-control"><button class="boton boton-icono" type="button" data-copiar="ini-issuer" title="Copiar" aria-label="Copiar emisor OAuth"><svg class="icono" aria-hidden="true"><use href="#i-copy"/></svg></button></div>
+          </div>
+        </div>
+
+        <h2>Resumen</h2>
+        <div class="tarjeta">
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-cloud"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">Túnel</div><div class="fila-desc" id="ini-tunel">—</div></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-apps"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">Módulos activos</div><div class="fila-desc" id="ini-modulos">—</div></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-user"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">Usuario</div><div class="fila-desc" id="ini-usuario">—</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CUENTA -->
+      <section class="vista" id="vista-cuenta" aria-labelledby="t-cuenta" hidden>
+        <h1 id="t-cuenta">Cuenta</h1>
+        <p class="intro">Es el usuario y la contraseña con los que autorizas el acceso desde Claude, ChatGPT u otro cliente.</p>
+
+        <form class="tarjeta" id="form-cuenta" autocomplete="off">
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-user"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="cuenta-usuario">Nombre de usuario</label></div>
+            <div class="fila-control"><input class="entrada" id="cuenta-usuario" type="text" maxlength="64" autocomplete="off" spellcheck="false"></div>
+          </div>
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-lock"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="cuenta-actual">Contraseña actual</label><div class="fila-desc">Hace falta para confirmar cualquier cambio.</div></div>
+            <div class="fila-control campo-clave"><input class="entrada" id="cuenta-actual" type="password" autocomplete="current-password"><button class="boton boton-icono ojo" type="button" data-ojo="cuenta-actual" aria-label="Mostrar contraseña"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+          </div>
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="cuenta-nueva">Contraseña nueva</label><div class="fila-desc">Mínimo 8 caracteres. Déjala vacía si solo cambias el usuario.</div></div>
+            <div class="fila-control campo-clave"><input class="entrada" id="cuenta-nueva" type="password" autocomplete="new-password"><button class="boton boton-icono ojo" type="button" data-ojo="cuenta-nueva" aria-label="Mostrar contraseña"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+          </div>
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="cuenta-repetir">Repetir contraseña nueva</label></div>
+            <div class="fila-control campo-clave"><input class="entrada" id="cuenta-repetir" type="password" autocomplete="new-password"><button class="boton boton-icono ojo" type="button" data-ojo="cuenta-repetir" aria-label="Mostrar contraseña"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-logout"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="cuenta-revocar">Desconectar también los conectores autorizados</label><div class="fila-desc">Claude, ChatGPT y otros tendrán que volver a pedir acceso. Las sesiones abiertas siempre se cierran.</div></div>
+            <div class="fila-control"><input class="interruptor" id="cuenta-revocar" type="checkbox" checked></div>
+          </div>
+        </form>
+
+        <div class="barra-acciones">
+          <button class="boton acento" type="button" id="cuenta-guardar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-save"/></svg>Guardar cambios</button>
+        </div>
+      </section>
+
+      <!-- TUNEL -->
+      <section class="vista" id="vista-tunel" aria-labelledby="t-tunel" hidden>
+        <h1 id="t-tunel">Túnel</h1>
+        <p class="intro">Cómo se publica el servidor en internet para que Claude o ChatGPT puedan llegar a tu PC sin abrir puertos.</p>
+
+        <h2>Modo</h2>
+        <div class="opciones" role="radiogroup" aria-label="Modo del túnel">
+          <label class="opcion">
+            <input type="radio" name="tunel-modo" value="rapido">
+            <svg class="icono opcion-icono" aria-hidden="true"><use href="#i-bolt"/></svg>
+            <span class="opcion-titulo">Rápido</span>
+            <span class="opcion-desc">Gratis y sin cuenta. La dirección cambia cada vez que se reinicia.</span>
+          </label>
+          <label class="opcion">
+            <input type="radio" name="tunel-modo" value="nombrado">
+            <svg class="icono opcion-icono" aria-hidden="true"><use href="#i-link"/></svg>
+            <span class="opcion-titulo">Con nombre</span>
+            <span class="opcion-desc">Dirección fija con tu dominio. Necesita una cuenta de Cloudflare.</span>
+          </label>
+          <label class="opcion">
+            <input type="radio" name="tunel-modo" value="ninguno">
+            <svg class="icono opcion-icono" aria-hidden="true"><use href="#i-plug"/></svg>
+            <span class="opcion-titulo">Sin túnel</span>
+            <span class="opcion-desc">Solo local, o con tu propio proxy o VPN.</span>
+          </label>
+        </div>
+
+        <h2>Opciones</h2>
+        <div class="tarjeta" id="tarjeta-tunel">
+          <div class="fila fila-campo" data-modos="nombrado">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="tunel-token">Token del túnel</label><div class="fila-desc" id="tunel-token-desc">Cloudflare Zero Trust → Redes → Túneles → tu túnel → Instalar conector.</div></div>
+            <div class="fila-control campo-clave"><input class="entrada" id="tunel-token" type="password" autocomplete="off" spellcheck="false" placeholder=""><button class="boton boton-icono ojo" type="button" data-ojo="tunel-token" aria-label="Mostrar token"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+          </div>
+          <div class="fila fila-campo" data-modos="nombrado ninguno">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-globe"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="tunel-url">Dirección pública</label><div class="fila-desc">Sin <code>/mcp</code>. Ejemplo: <code>https://mcp.tudominio.com</code></div></div>
+            <div class="fila-control"><input class="entrada entrada-ancha" id="tunel-url" type="url" autocomplete="off" spellcheck="false" placeholder="https://mcp.tudominio.com"></div>
+          </div>
+          <div class="fila fila-campo" data-modos="rapido nombrado">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-sliders"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="tunel-protocolo">Protocolo</label><div class="fila-desc">HTTP/2 funciona en casi todas las redes. QUIC puede ser bloqueado por algunos routers.</div></div>
+            <div class="fila-control"><select class="entrada" id="tunel-protocolo"><option value="http2">HTTP/2 (recomendado)</option><option value="quic">QUIC</option><option value="auto">Automático</option></select></div>
+          </div>
+          <div class="fila" data-modos="rapido nombrado">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-refresh"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="tunel-actualizar">Actualizar cloudflared al iniciar</label><div class="fila-desc">Descarga la última versión desde GitHub cada vez que arranca el servidor.</div></div>
+            <div class="fila-control"><input class="interruptor" id="tunel-actualizar" type="checkbox"></div>
+          </div>
+          <div class="fila fila-vacia" id="tunel-vacio" hidden>
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-info"/></svg>
+            <div class="fila-texto"><div class="fila-desc">Sin túnel, el servidor solo responde en esta PC. Si usas tu propio proxy, pon su dirección pública arriba.</div></div>
+          </div>
+        </div>
+
+        <div class="aviso aviso-info aviso-suelto">
+          <svg class="icono aviso-icono" aria-hidden="true"><use href="#i-info"/></svg>
+          <div class="aviso-texto">Si cambia la dirección pública, tendrás que volver a autorizar el conector en Claude o ChatGPT.</div>
+        </div>
+
+        <div class="barra-acciones">
+          <button class="boton" type="button" id="tunel-guardar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-save"/></svg>Guardar</button>
+          <button class="boton acento" type="button" id="tunel-aplicar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-refresh"/></svg>Guardar y aplicar</button>
+          <button class="boton boton-peligro" type="button" id="tunel-borrar-token" hidden>Borrar token guardado</button>
+        </div>
+      </section>
+
+      <!-- SERVIDOR -->
+      <section class="vista" id="vista-servidor" aria-labelledby="t-servidor" hidden>
+        <h1 id="t-servidor">Servidor</h1>
+        <p class="intro">Estos ajustes se aplican al reiniciar el servidor.</p>
+
+        <div class="tarjeta">
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-plug"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="srv-puerto">Puerto del servidor MCP</label><div class="fila-desc">Por defecto 3000.</div></div>
+            <div class="fila-control"><input class="entrada entrada-corta" id="srv-puerto" type="number" min="1" max="65535"></div>
+          </div>
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-sliders"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="srv-panel-puerto">Puerto de esta configuración</label><div class="fila-desc">Solo escucha en esta PC. Por defecto 3100.</div></div>
+            <div class="fila-control"><input class="entrada entrada-corta" id="srv-panel-puerto" type="number" min="1024" max="65535"></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-globe"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="srv-abrir">Abrir esta configuración al iniciar</label><div class="fila-desc">Abre una pestaña del navegador cada vez que arranca el servidor.</div></div>
+            <div class="fila-control"><input class="interruptor" id="srv-abrir" type="checkbox"></div>
+          </div>
+        </div>
+
+        <h2>Sesiones</h2>
+        <div class="tarjeta">
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-user"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="srv-sesion">Duración de la sesión</label><div class="fila-desc">Inicio de sesión con usuario y contraseña. En minutos.</div></div>
+            <div class="fila-control"><input class="entrada entrada-corta" id="srv-sesion" type="number" min="5" max="10080"></div>
+          </div>
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="srv-access">Token de acceso</label><div class="fila-desc">Duración en minutos antes de renovarse.</div></div>
+            <div class="fila-control"><input class="entrada entrada-corta" id="srv-access" type="number" min="5" max="1440"></div>
+          </div>
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-refresh"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="srv-refresh">Token de refresco</label><div class="fila-desc">Cuántos días puede seguir conectado un conector sin volver a autorizar.</div></div>
+            <div class="fila-control"><input class="entrada entrada-corta" id="srv-refresh" type="number" min="1" max="365"></div>
+          </div>
+        </div>
+
+        <div class="barra-acciones">
+          <button class="boton" type="button" id="srv-guardar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-save"/></svg>Guardar</button>
+          <button class="boton acento" type="button" id="srv-reiniciar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-power"/></svg>Guardar y reiniciar</button>
+        </div>
+      </section>
+
+      <!-- MODULOS -->
+      <section class="vista" id="vista-modulos" aria-labelledby="t-modulos" hidden>
+        <h1 id="t-modulos">Módulos</h1>
+        <p class="intro">Activa o desactiva las herramientas que expone el servidor. Los cambios se aplican al reiniciar.</p>
+
+        <div class="tarjeta" id="lista-modulos"></div>
+
+        <div class="barra-acciones">
+          <button class="boton" type="button" id="mod-guardar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-save"/></svg>Guardar</button>
+          <button class="boton acento" type="button" id="mod-reiniciar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-power"/></svg>Guardar y reiniciar</button>
+        </div>
+      </section>
+
+      <!-- SEGURIDAD -->
+      <section class="vista" id="vista-seguridad" aria-labelledby="t-seguridad" hidden>
+        <h1 id="t-seguridad">Seguridad</h1>
+
+        <h2>Sesiones</h2>
+        <div class="tarjeta">
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-logout"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">Cerrar todas las sesiones</div><div class="fila-desc">Invalida los inicios de sesión activos. Útil si sospechas que alguien tiene acceso.</div></div>
+            <div class="fila-control"><button class="boton" type="button" id="seg-cerrar">Cerrar sesiones</button></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-shield"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="seg-revocar">Incluir conectores autorizados</label><div class="fila-desc">También revoca los accesos de Claude, ChatGPT y otros; tendrán que autorizarse de nuevo.</div></div>
+            <div class="fila-control"><input class="interruptor" id="seg-revocar" type="checkbox"></div>
+          </div>
+        </div>
+
+        <h2>API key del REST público</h2>
+        <div class="tarjeta">
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+            <div class="fila-texto"><div class="fila-titulo">API key</div><div class="fila-desc valor" id="apikey-valor">••••••••••••••••••••••••</div></div>
+            <div class="fila-control grupo">
+              <button class="boton boton-icono" type="button" id="apikey-mostrar" title="Mostrar" aria-label="Mostrar API key"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button>
+              <button class="boton boton-icono" type="button" id="apikey-copiar" title="Copiar" aria-label="Copiar API key"><svg class="icono" aria-hidden="true"><use href="#i-copy"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <p class="nota">Está guardada en <code>apikey.json</code>. Quien la tenga puede usar las rutas REST del servidor: no la compartas.</p>
+      </section>
+
+      <!-- ACERCA DE -->
+      <section class="vista" id="vista-acerca" aria-labelledby="t-acerca" hidden>
+        <h1 id="t-acerca">Acerca de</h1>
+        <div class="tarjeta" id="acerca-lista"></div>
+        <p class="nota">Esta página solo es accesible desde tu PC y su enlace cambia en cada arranque. La configuración se guarda en <code>config.json</code>; las variables de entorno (<code>PORT</code>, <code>SESSION_MINUTOS</code>…) tienen prioridad sobre ese archivo.</p>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Diálogo de confirmación -->
+<dialog class="dialogo" id="dialogo" aria-labelledby="dialogo-titulo">
+  <form method="dialog" class="dialogo-form">
+    <div class="dialogo-cuerpo">
+      <h2 id="dialogo-titulo">Confirmar</h2>
+      <p id="dialogo-texto"></p>
+    </div>
+    <div class="dialogo-pie">
+      <button class="boton acento" value="si" id="dialogo-si">Aceptar</button>
+      <button class="boton" value="no">Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Pantalla de reinicio -->
+<div class="cubierta" id="cubierta" hidden>
+  <div class="cubierta-caja">
+    <div class="rueda" aria-hidden="true"></div>
+    <h2>Reiniciando el servidor…</h2>
+    <p>En unos segundos se abrirá una pestaña nueva con la configuración. Puedes cerrar esta.</p>
+  </div>
+</div>
+
+<!-- Avisos emergentes -->
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

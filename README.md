@@ -104,6 +104,22 @@ Para una URL fija necesitas un dominio delegado a una cuenta de Cloudflare y un 
 
 ---
 
+## Panel de configuración
+
+Al arrancar, el servidor abre en tu navegador una página de configuración con estilo Windows 11 (claro/oscuro automático). Desde ahí puedes:
+
+- **Cuenta:** cambiar usuario y contraseña (opcionalmente desconecta los conectores ya autorizados).
+- **Túnel:** elegir entre túnel *rápido* (gratis, URL aleatoria), *con nombre* (URL fija, necesita token de Cloudflare) o *sin túnel*; protocolo (HTTP/2, QUIC o automático) y si se actualiza `cloudflared` al iniciar. El botón "Guardar y aplicar" reinicia solo el túnel.
+- **Servidor:** puertos, duración de sesiones y tokens.
+- **Módulos:** activar o desactivar módulos (se aplica al reiniciar).
+- **Seguridad:** cerrar todas las sesiones y ver la API key del REST.
+
+Cómo funciona y qué tener en cuenta:
+
+- Escucha **solo en `127.0.0.1`** (puerto 3100 por defecto), distinto al del servidor MCP, así que el túnel nunca la expone. El enlace lleva un token aleatorio que cambia en cada arranque; si cierras la pestaña, copia el enlace de la consola.
+- Lo que guardas va a `config.json` (ignorado por git, puede contener el token del túnel). Las variables de entorno (`PORT`, `SESSION_MINUTOS`, `URL_PUBLICA_BASE`…) siguen teniendo prioridad sobre ese archivo.
+- `CONFIG_ABRIR=0` evita que se abra la pestaña; `CONFIG_ABRIR=1` la fuerza.
+
 ## Herramientas disponibles (47 + 99 de Discord)
 
 ### Sesión (2 herramientas)
