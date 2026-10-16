@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Configuración inicial · Servidor MCP</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%230067c0'/%3E%3Cpath d='M7 9h10M7 15h10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='15' cy='9' r='2.2' fill='%230067c0' stroke='white' stroke-width='1.6'/%3E%3Ccircle cx='9' cy='15' r='2.2' fill='%230067c0' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/estilos.css">
+  <link rel="stylesheet" href="/tema.css">
+</head>
+<body class="pagina-setup">
+
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8 7.5 9.5 4.4-1.5 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.9" r=".6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.6 4 5.7 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.7-4-9s1.4-6.4 4-9z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v4M15 3v4"/><path d="M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+</svg>
+
+<main class="asistente">
+
+  <header class="asistente-cabecera">
+    <div class="heroe-icono"><svg class="icono" aria-hidden="true"><use href="#i-sliders"/></svg></div>
+    <h1>Bienvenido</h1>
+    <p class="intro">Vamos a dejar el servidor listo en tres pasos. Todo se puede cambiar después desde la configuración.</p>
+  </header>
+
+  <ol class="pasos" id="pasos" aria-label="Progreso">
+    <li class="paso" data-paso="cuenta"><span class="paso-num">1</span><span class="paso-nombre">Cuenta</span></li>
+    <li class="paso" data-paso="tunel"><span class="paso-num">2</span><span class="paso-nombre">Túnel</span></li>
+    <li class="paso" data-paso="discord"><span class="paso-num">3</span><span class="paso-nombre">Discord</span></li>
+  </ol>
+
+  <div class="asistente-cuerpo">
+
+    <!-- PASO 1 -->
+    <section class="vista" id="paso-cuenta" aria-labelledby="t-cuenta">
+      <h2 id="t-cuenta" class="paso-titulo">Crea tu cuenta</h2>
+      <p class="intro">Con este usuario y contraseña autorizarás el acceso desde Claude, ChatGPT u otro cliente. Se guardan cifrados (scrypt) en <code>usuarios.json</code>.</p>
+
+      <div class="tarjeta">
+        <div class="fila fila-campo">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-user"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-usuario">Nombre de usuario</label></div>
+          <div class="fila-control"><input class="entrada" id="s-usuario" type="text" maxlength="64" autocomplete="username" spellcheck="false" autofocus></div>
+        </div>
+        <div class="fila fila-campo">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-lock"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-clave">Contraseña</label><div class="fila-desc">Mínimo 8 caracteres.</div></div>
+          <div class="fila-control campo-clave"><input class="entrada" id="s-clave" type="password" autocomplete="new-password"><button class="boton boton-icono" type="button" data-ojo="s-clave" aria-label="Mostrar contraseña"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+        </div>
+        <div class="fila fila-campo">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-clave2">Repetir contraseña</label></div>
+          <div class="fila-control campo-clave"><input class="entrada" id="s-clave2" type="password" autocomplete="new-password"><button class="boton boton-icono" type="button" data-ojo="s-clave2" aria-label="Mostrar contraseña"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 2 -->
+    <section class="vista" id="paso-tunel" aria-labelledby="t-tunel" hidden>
+      <h2 id="t-tunel" class="paso-titulo">¿Cómo quieres publicar el servidor?</h2>
+      <p class="intro">Para que Claude o ChatGPT lleguen a tu PC desde internet sin abrir puertos.</p>
+
+      <div class="opciones" role="radiogroup" aria-label="Modo del túnel">
+        <label class="opcion">
+          <input type="radio" name="s-modo" value="rapido" checked>
+          <svg class="icono opcion-icono" aria-hidden="true"><use href="#i-bolt"/></svg>
+          <span class="opcion-titulo">Rápido</span>
+          <span class="opcion-desc">Gratis y sin cuenta. La dirección cambia cada vez que se reinicia.</span>
+        </label>
+        <label class="opcion">
+          <input type="radio" name="s-modo" value="nombrado">
+          <svg class="icono opcion-icono" aria-hidden="true"><use href="#i-link"/></svg>
+          <span class="opcion-titulo">Con nombre</span>
+          <span class="opcion-desc">Dirección fija con tu dominio. Necesita una cuenta de Cloudflare.</span>
+        </label>
+        <label class="opcion">
+          <input type="radio" name="s-modo" value="ninguno">
+          <svg class="icono opcion-icono" aria-hidden="true"><use href="#i-plug"/></svg>
+          <span class="opcion-titulo">Sin túnel</span>
+          <span class="opcion-desc">Solo local, o con tu propio proxy o VPN.</span>
+        </label>
+      </div>
+
+      <div class="tarjeta separada" id="s-tarjeta-tunel">
+        <div class="fila fila-campo" data-modos="nombrado">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-token">Token del túnel</label><div class="fila-desc">Cloudflare Zero Trust → Redes → Túneles → tu túnel → Instalar conector.</div></div>
+          <div class="fila-control campo-clave"><input class="entrada" id="s-token" type="password" autocomplete="off" spellcheck="false"><button class="boton boton-icono" type="button" data-ojo="s-token" aria-label="Mostrar token"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+        </div>
+        <div class="fila fila-campo" data-modos="nombrado ninguno">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-globe"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-url">Dirección pública</label><div class="fila-desc">Sin <code>/mcp</code>. Ejemplo: <code>https://mcp.tudominio.com</code></div></div>
+          <div class="fila-control"><input class="entrada entrada-ancha" id="s-url" type="url" autocomplete="off" spellcheck="false" placeholder="https://mcp.tudominio.com"></div>
+        </div>
+        <div class="fila" id="s-tunel-rapido" data-modos="rapido">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-info"/></svg>
+          <div class="fila-texto"><div class="fila-desc">No hace falta configurar nada más. La primera vez se descarga <code>cloudflared</code> automáticamente.</div></div>
+        </div>
+        <div class="fila" id="s-tunel-ninguno" data-modos="ninguno">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-info"/></svg>
+          <div class="fila-texto"><div class="fila-desc">Sin túnel, el servidor solo responde en esta PC. Si usas tu propio proxy, pon arriba su dirección pública.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 3 -->
+    <section class="vista" id="paso-discord" aria-labelledby="t-discord" hidden>
+      <h2 id="t-discord" class="paso-titulo">Discord (opcional)</h2>
+      <p class="intro">Si quieres administrar servidores de Discord desde tu cliente de IA, conecta tu bot. Si no, déjalo apagado.</p>
+
+      <div class="tarjeta">
+        <div class="fila">
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-apps"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-dc-activar">Activar el módulo de Discord</label><div class="fila-desc">99 herramientas: mensajes, canales, roles, moderación…</div></div>
+          <div class="fila-control"><input class="interruptor" id="s-dc-activar" type="checkbox"></div>
+        </div>
+        <div class="fila fila-campo" data-dc>
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-key"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-dc-token">Token del bot</label><div class="fila-desc" id="s-dc-token-desc">Portal de Desarrolladores de Discord → tu aplicación → Bot → Restablecer token.</div></div>
+          <div class="fila-control campo-clave"><input class="entrada" id="s-dc-token" type="password" autocomplete="off" spellcheck="false"><button class="boton boton-icono" type="button" data-ojo="s-dc-token" aria-label="Mostrar token"><svg class="icono" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+        </div>
+        <div class="fila fila-campo" data-dc>
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-shield"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-dc-guilds">Servidores permitidos</label><div class="fila-desc">Opcional. IDs separados por comas; vacío = todos donde esté el bot.</div></div>
+          <div class="fila-control"><input class="entrada entrada-ancha" id="s-dc-guilds" type="text" autocomplete="off" spellcheck="false" placeholder="123456789012345678"></div>
+        </div>
+        <div class="fila fila-campo" data-dc>
+          <svg class="icono fila-icono" aria-hidden="true"><use href="#i-info"/></svg>
+          <div class="fila-texto"><label class="fila-titulo" for="s-dc-log">Canal de registro</label><div class="fila-desc">Opcional. ID del canal donde se anota cada herramienta usada.</div></div>
+          <div class="fila-control"><input class="entrada entrada-ancha" id="s-dc-log" type="text" autocomplete="off" spellcheck="false"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="aviso aviso-error aviso-suelto" id="s-error" role="alert" hidden>
+      <svg class="icono aviso-icono" aria-hidden="true"><use href="#i-error"/></svg>
+      <div class="aviso-texto" id="s-error-texto"></div>
+    </div>
+
+    <div class="asistente-pie">
+      <button class="boton" type="button" id="s-atras"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-arrow-left"/></svg>Atrás</button>
+      <button class="boton acento" type="button" id="s-siguiente"><span id="s-siguiente-texto">Siguiente</span><svg class="icono icono-boton" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+    </div>
+  </div>
+</main>
+
+<!-- Pantalla final -->
+<div class="cubierta" id="cubierta" hidden>
+  <div class="cubierta-caja">
+    <div class="rueda" aria-hidden="true"></div>
+    <h2>Todo listo</h2>
+    <p>Guardando y arrancando el servidor…</p>
+  </div>
+</div>
+
+<script src="/setup.js"></script>
+</body>
+</html>

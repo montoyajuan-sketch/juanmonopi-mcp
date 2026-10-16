@@ -40,7 +40,7 @@ cd juanmonopi-mcp
 .\iniciar.bat
 ```
 
-1. La primera vez te pide crear un **usuario y contraseña**: son los que usarás para autorizar el acceso desde Claude o ChatGPT.
+1. La primera vez se abre en tu navegador un **asistente de configuración** (cuenta, túnel y Discord). El usuario y la contraseña que crees ahí son los que usarás para autorizar el acceso desde Claude o ChatGPT. Si no se abre solo, copia el enlace `http://localhost:3100/?t=…` que aparece en la consola.
 2. El servidor imprime una URL pública del estilo `https://algo-random.trycloudflare.com`.
 3. En tu cliente, agrega un **conector personalizado** con esa URL terminada en `/mcp`.
 
@@ -108,10 +108,12 @@ Para una URL fija necesitas un dominio delegado a una cuenta de Cloudflare y un 
 
 Al arrancar, el servidor abre en tu navegador una página de configuración con estilo Windows 11 (claro/oscuro automático). Desde ahí puedes:
 
+- **Primera vez:** un asistente crea tu usuario y contraseña, elige el túnel y, si quieres, conecta Discord. Reemplaza las preguntas por consola.
 - **Cuenta:** cambiar usuario y contraseña (opcionalmente desconecta los conectores ya autorizados).
 - **Túnel:** elegir entre túnel *rápido* (gratis, URL aleatoria), *con nombre* (URL fija, necesita token de Cloudflare) o *sin túnel*; protocolo (HTTP/2, QUIC o automático) y si se actualiza `cloudflared` al iniciar. El botón "Guardar y aplicar" reinicia solo el túnel.
 - **Servidor:** puertos, duración de sesiones y tokens.
-- **Módulos:** activar o desactivar módulos (se aplica al reiniciar).
+- **Temas:** color de acento de la interfaz (diez colores predefinidos o cualquiera que elijas). Se ve al instante y también se usa en la página de autorización de los conectores.
+- **Módulos:** activar o desactivar módulos y configurar el token de Discord (se aplica al reiniciar).
 - **Seguridad:** cerrar todas las sesiones y ver la API key del REST.
 
 Cómo funciona y qué tener en cuenta:
@@ -223,7 +225,7 @@ Mensajes, canales, permisos, miembros, roles, foros, webhooks, eventos programad
 ## Configuración del módulo Discord
 
 1. Crea un bot en el [Portal de Desarrolladores de Discord](https://discord.com/developers/applications) y copia su token.
-2. `instalar-todo.ps1` crea `modules/discord/.env` a partir de `.env.example`. Complétalo:
+2. Pega el token en el asistente de la primera vez o, después, en **Configuración → Módulos → Discord**. Se guarda en `modules/discord/.env` (también puedes editar ese archivo a mano; `instalar-todo.ps1` lo crea a partir de `.env.example`):
 
 | Variable | Obligatoria | Descripción |
 | -------- | ----------- | ----------- |
@@ -255,6 +257,8 @@ Si falta el token o las dependencias, el módulo se desactiva solo y el resto de
 Cada módulo es una carpeta con su propio `module.js` (registra las herramientas MCP y, opcionalmente, rutas REST) y, si necesita Python, su `main.py` y `requirements.txt`.
 
 ### Agregar un módulo nuevo
+
+> Guía completa para crear módulos: [Module API](MODULE_API.md). Referencia exacta y plantillas: [Module API detallada](MODULE_API_DETAILED.md).
 
 Crea `modules/<nombre>/module.js` con una exportación por defecto. El servidor carga solo todas las carpetas de `modules/` que tengan ese archivo:
 

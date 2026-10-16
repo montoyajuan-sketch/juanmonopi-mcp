@@ -19,6 +19,8 @@
 //  - Rechaza peticiones cuyo Host no sea localhost/127.0.0.1 (anti DNS
 //    rebinding) y exige una cabecera propia en la API (anti CSRF).
 //  - Cambiar la contrasena exige la actual y limita los intentos.
+//  - Primera vez (sin usuarios.json): sirve setup.html, un asistente que crea el
+//    usuario, el tunel y el token de Discord; index.js espera a que termine.
 //  - Solo usa el modulo http de Node: no depende de express.
 
 import fs from "fs";
@@ -67,6 +69,9 @@ function porDefecto() {
     panel: {
       puerto: 3100,
       abrirAlIniciar: true
+    },
+    tema: {
+      acento: "" // "" = predeterminado; si no, #rrggbb
     }
   };
 }
@@ -136,6 +141,16 @@ function tokenTunel(t, defecto, errores) {
   return texto;
 }
 
+function colorAcento(valor, defecto, errores) {
+  if (valor === undefined) return defecto;
+  if (valor === null || valor === "") return "";
+  if (typeof valor !== "string" || !REGEX_ACENTO.test(valor.trim())) {
+    errores.push("El color de acento debe tener el formato #RRGGBB (por ejemplo #0078d4).");
+    return defecto;
+  }
+  return valor.trim().toLowerCase();
+}
+
 function listaModulos(valor, defecto, errores) {
   if (valor === undefined) return defecto;
   if (!Array.isArray(valor) || valor.length > 200) {
@@ -153,6 +168,70 @@ function listaModulos(valor, defecto, errores) {
   return limpia;
 }
 
+// ============================================================
+// TEMA (color de acento)
+// ============================================================
+
+const REGEX_ACENTO = /^#[0-9a-f]{6}$/i;
+
+function hexARgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgbAHex(rgb) {
+  return "#" + rgb.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+}
+
+function luminancia(rgb) {
+  const [r, g, b] = rgb.map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function mezclar(a, b, t) {
+  return a.map((v, i) => v + (b[i] - v) * t);
+}
+
+function contraste(l1, l2) {
+  const [x, y] = l1 > l2 ? [l1, l2] : [l2, l1];
+  return (x + 0.05) / (y + 0.05);
+}
+
+// Modo claro: oscurece un color demasiado claro. Modo oscuro: aclara uno demasiado oscuro.
+function ajustarAcento(rgb, modo) {
+  let c = rgb;
+  for (let i = 0; i < 40; i++) {
+    const l = luminancia(c);
+    if (modo === "claro" ? l <= 0.3 : l >= 0.25) break;
+    c = mezclar(c, modo === "claro" ? [0, 0, 0] : [255, 255, 255], 0.08);
+  }
+  return c;
+}
+
+function textoSobre(rgb) {
+  const l = luminancia(rgb);
+  return contraste(l, 1) >= contraste(l, 0) ? "#ffffff" : "#000000";
+}
+
+// CSS que sobrescribe el color de acento (claro y oscuro). Devuelve "" si el color
+// es el predeterminado o no es un #rrggbb valido, asi que es seguro incrustarlo en HTML.
+export function cssTema(acento) {
+  if (typeof acento !== "string" || !REGEX_ACENTO.test(acento)) return "";
+  const base = hexARgb(acento);
+  const bloque = (rgb, fondo, mezcla) =>
+    `    --acento: ${rgbAHex(rgb)};\n` +
+    `    --acento-texto: ${textoSobre(rgb)};\n` +
+    `    --info-fondo: ${rgbAHex(mezclar(fondo, rgb, mezcla))};\n`;
+  return (
+    ":root {\n" + bloque(ajustarAcento(base, "claro"), [255, 255, 255], 0.1) + "  }\n" +
+    "@media (prefers-color-scheme: dark) {\n  :root {\n" +
+    bloque(ajustarAcento(base, "oscuro"), [43, 43, 43], 0.2) + "  }\n}\n"
+  );
+}
+
 // Toma "entrada" (parcial o completa) y rellena lo que falte con "base".
 export function normalizarConfig(entrada, base = porDefecto()) {
   const errores = [];
@@ -161,6 +240,7 @@ export function normalizarConfig(entrada, base = porDefecto()) {
   const t = esObjeto(e.tunel) ? e.tunel : {};
   const m = esObjeto(e.modulos) ? e.modulos : {};
   const p = esObjeto(e.panel) ? e.panel : {};
+  const te = esObjeto(e.tema) ? e.tema : {};
 
   const config = {
     servidor: {
@@ -182,6 +262,9 @@ export function normalizarConfig(entrada, base = porDefecto()) {
     panel: {
       puerto: entero(p.puerto, 1024, 65535, base.panel.puerto, "El puerto del panel", errores),
       abrirAlIniciar: booleano(p.abrirAlIniciar, base.panel.abrirAlIniciar, "La apertura automática del panel", errores)
+    },
+    tema: {
+      acento: colorAcento(te.acento, base.tema.acento, errores)
     }
   };
 
@@ -330,6 +413,454 @@ function verificarContrasena(contrasena, usuario) {
 }
 
 // ============================================================
+// USUARIO (configuracion inicial)
+// ============================================================
+
+function usuarioExiste() {
+  const u = leerJson(RUTA_USUARIOS, null);
+  return Boolean(u && typeof u.usuario === "string" && u.usuario && u.salt && u.hash);
+}
+
+function errorNombre(nombre) {
+  if (typeof nombre !== "string" || !nombre.trim()) return "Escribe un nombre de usuario.";
+  if (nombre.trim().length > 64 || /[\u0000-\u001f\u007f]/.test(nombre)) {
+    return "El nombre de usuario no es válido (máximo 64 caracteres, sin caracteres de control).";
+  }
+  return "";
+}
+
+function errorContrasena(clave) {
+  if (typeof clave !== "string" || clave.length < 8) return "La contraseña debe tener al menos 8 caracteres.";
+  if (clave.length > 128) return "La contraseña no puede pasar de 128 caracteres.";
+  return "";
+}
+
+// ============================================================
+// AJUSTES DE MODULOS
+//
+// Cada modulo puede declarar sus ajustes en modules/<nombre>/configuracion.json.
+// El panel dibuja el formulario, valida en el servidor y guarda los valores en
+// modules/<nombre>/.env. Al arrancar, index.js carga ese .env en process.env
+// (solo las claves declaradas, sin pisar variables que ya existan).
+// ============================================================
+
+const TIPOS_CAMPO = ["texto", "secreto", "numero", "booleano", "opcion"];
+const LONGITUD_MAX_DEFECTO = 500;
+const LONGITUD_MAX_TOPE = 4096;
+
+// Variables que un modulo nunca puede declarar como ajuste.
+const CLAVES_RESERVADAS = new Set([
+  "PATH", "PATHEXT", "COMSPEC", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE",
+  "APPDATA", "LOCALAPPDATA", "PROGRAMFILES", "NODE_OPTIONS", "NODE_PATH", "NODE_EXTRA_CA_CERTS",
+  "NODE_TLS_REJECT_UNAUTHORIZED", "PORT", "SESSION_MINUTOS", "ACCESS_TOKEN_MINUTOS",
+  "REFRESH_TOKEN_DIAS", "OAUTH_CODE_MINUTOS", "URL_PUBLICA_BASE", "URL_PUBLICA", "OAUTH_ISSUER",
+  "CONFIG_ABRIR", "TUNNEL_TOKEN", "TUNNEL_TRANSPORT_PROTOCOL", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"
+]);
+
+function nombreModuloValido(nombre) {
+  return typeof nombre === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(nombre);
+}
+
+function rutaEnvModulo(nombre) {
+  return path.join(CARPETA_MODULOS, nombre, ".env");
+}
+
+const avisosEmitidos = new Set();
+function avisarUnaVez(clave, texto) {
+  if (avisosEmitidos.has(clave)) return;
+  avisosEmitidos.add(clave);
+  console.warn(texto);
+}
+
+function textoCorto(valor, max, nombre, errores, obligatorio = false) {
+  if (valor === undefined || valor === null || valor === "") {
+    if (obligatorio) errores.push(`${nombre} es obligatorio.`);
+    return "";
+  }
+  if (typeof valor !== "string" || valor.length > max || /[\u0000-\u001f\u007f]/.test(valor)) {
+    errores.push(`${nombre} debe ser texto de hasta ${max} caracteres.`);
+    return "";
+  }
+  return valor.trim();
+}
+
+function normalizarCampo(c, i, errores, vistas) {
+  const donde = `campos[${i}]`;
+  if (!esObjeto(c)) {
+    errores.push(`${donde} debe ser un objeto.`);
+    return null;
+  }
+  const n = errores.length;
+
+  const clave = typeof c.clave === "string" ? c.clave : "";
+  if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(clave)) {
+    errores.push(`${donde}.clave debe ser MAYUSCULAS, números y guiones bajos (ejemplo: MIMODULO_API_KEY).`);
+  } else if (CLAVES_RESERVADAS.has(clave)) {
+    errores.push(`${donde}.clave "${clave}" está reservada.`);
+  } else if (vistas.has(clave)) {
+    errores.push(`${donde}.clave "${clave}" está repetida.`);
+  }
+  vistas.add(clave);
+
+  const tipo = c.tipo === undefined ? "texto" : c.tipo;
+  if (!TIPOS_CAMPO.includes(tipo)) {
+    errores.push(`${donde}.tipo debe ser uno de: ${TIPOS_CAMPO.join(", ")}.`);
+  }
+
+  const campo = {
+    clave,
+    etiqueta: textoCorto(c.etiqueta, 80, `${donde}.etiqueta`, errores, true),
+    tipo,
+    ayuda: textoCorto(c.ayuda, 300, `${donde}.ayuda`, errores),
+    placeholder: textoCorto(c.placeholder, 100, `${donde}.placeholder`, errores),
+    obligatorio: c.obligatorio === true
+  };
+  if (c.obligatorio !== undefined && typeof c.obligatorio !== "boolean") {
+    errores.push(`${donde}.obligatorio debe ser verdadero o falso.`);
+  }
+
+  if (tipo === "texto" || tipo === "secreto") {
+    const max = c.longitudMax === undefined ? LONGITUD_MAX_DEFECTO : c.longitudMax;
+    if (!Number.isInteger(max) || max < 1 || max > LONGITUD_MAX_TOPE) {
+      errores.push(`${donde}.longitudMax debe ser un entero entre 1 y ${LONGITUD_MAX_TOPE}.`);
+    } else {
+      campo.longitudMax = max;
+    }
+    if (c.patron !== undefined) {
+      if (typeof c.patron !== "string" || c.patron.length > 300) {
+        errores.push(`${donde}.patron debe ser una expresión regular de hasta 300 caracteres.`);
+      } else {
+        try {
+          new RegExp(c.patron);
+          campo.patron = c.patron;
+        } catch {
+          errores.push(`${donde}.patron no es una expresión regular válida.`);
+        }
+      }
+    }
+    campo.mensajePatron = textoCorto(c.mensajePatron, 200, `${donde}.mensajePatron`, errores);
+    if (c.quitarEspacios === true) campo.quitarEspacios = true;
+    if (c.predeterminado !== undefined) {
+      if (tipo === "secreto") errores.push(`${donde}: un secreto no puede tener valor predeterminado.`);
+      else if (typeof c.predeterminado !== "string") errores.push(`${donde}.predeterminado debe ser texto.`);
+      else campo.predeterminado = c.predeterminado;
+    }
+  }
+
+  if (tipo === "numero") {
+    for (const lim of ["min", "max"]) {
+      if (c[lim] === undefined) continue;
+      if (typeof c[lim] !== "number" || !Number.isFinite(c[lim])) errores.push(`${donde}.${lim} debe ser un número.`);
+      else campo[lim] = c[lim];
+    }
+    if (c.predeterminado !== undefined) {
+      if (typeof c.predeterminado !== "number" || !Number.isFinite(c.predeterminado)) errores.push(`${donde}.predeterminado debe ser un número.`);
+      else campo.predeterminado = c.predeterminado;
+    }
+  }
+
+  if (tipo === "booleano" && c.predeterminado !== undefined) {
+    if (typeof c.predeterminado !== "boolean") errores.push(`${donde}.predeterminado debe ser verdadero o falso.`);
+    else campo.predeterminado = c.predeterminado;
+  }
+
+  if (tipo === "opcion") {
+    const lista = Array.isArray(c.opciones) ? c.opciones : [];
+    if (lista.length < 1 || lista.length > 50) {
+      errores.push(`${donde}.opciones debe tener entre 1 y 50 elementos.`);
+    } else {
+      const opciones = [];
+      for (const o of lista) {
+        const valor = typeof o === "string" ? o : esObjeto(o) ? o.valor : undefined;
+        const etiqueta = typeof o === "string" ? o : esObjeto(o) && o.etiqueta !== undefined ? o.etiqueta : valor;
+        if (
+          typeof valor !== "string" || valor === "" || valor.length > 100 || /[\u0000-\u001f\u007f]/.test(valor) ||
+          typeof etiqueta !== "string" || etiqueta.length > 100
+        ) {
+          errores.push(`${donde}.opciones contiene una opción no válida.`);
+          break;
+        }
+        if (opciones.some((x) => x.valor === valor)) {
+          errores.push(`${donde}.opciones repite el valor "${valor}".`);
+          break;
+        }
+        opciones.push({ valor, etiqueta });
+      }
+      campo.opciones = opciones;
+    }
+    if (c.predeterminado !== undefined) {
+      if (typeof c.predeterminado !== "string" || !(campo.opciones || []).some((x) => x.valor === c.predeterminado)) {
+        errores.push(`${donde}.predeterminado debe ser uno de los valores de "opciones".`);
+      } else {
+        campo.predeterminado = c.predeterminado;
+      }
+    }
+  }
+
+  return errores.length === n ? campo : null;
+}
+
+function normalizarEsquema(crudo, nombre, errores) {
+  if (!esObjeto(crudo)) {
+    errores.push("El archivo debe contener un objeto JSON.");
+    return null;
+  }
+  const titulo = textoCorto(crudo.titulo, 60, "titulo", errores) || nombre;
+  const descripcion = textoCorto(crudo.descripcion, 300, "descripcion", errores);
+
+  if (!Array.isArray(crudo.campos) || crudo.campos.length < 1 || crudo.campos.length > 50) {
+    errores.push('"campos" debe ser una lista de 1 a 50 campos.');
+    return null;
+  }
+  const vistas = new Set();
+  const campos = [];
+  crudo.campos.forEach((c, i) => {
+    const campo = normalizarCampo(c, i, errores, vistas);
+    if (campo) campos.push(campo);
+  });
+  return errores.length ? null : { titulo, descripcion, campos };
+}
+
+// Lee y valida modules/<nombre>/configuracion.json. null si no existe o no es valido.
+export function leerEsquemaModulo(nombre) {
+  if (!nombreModuloValido(nombre)) return null;
+  const ruta = path.join(CARPETA_MODULOS, nombre, "configuracion.json");
+  let crudo;
+  try {
+    crudo = JSON.parse(fs.readFileSync(ruta, "utf8").replace(/^﻿/, ""));
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      avisarUnaVez(`${nombre}:json`, `[configuracion] modules/${nombre}/configuracion.json no se pudo leer: ${err.message}`);
+    }
+    return null;
+  }
+  const errores = [];
+  const esquema = normalizarEsquema(crudo, nombre, errores);
+  if (!esquema) {
+    avisarUnaVez(
+      `${nombre}:${errores.join("|")}`,
+      `[configuracion] modules/${nombre}/configuracion.json no es válido y se ignora:\n - ${errores.join("\n - ")}`
+    );
+    return null;
+  }
+  return esquema;
+}
+
+function parsearEnv(texto) {
+  const valores = {};
+  for (const linea of texto.split(/\r?\n/)) {
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(linea);
+    if (m) valores[m[1]] = m[2].replace(/^(["'])(.*)\1$/, "$2");
+  }
+  return valores;
+}
+
+function leerEnvModulo(nombre) {
+  try {
+    return parsearEnv(fs.readFileSync(rutaEnvModulo(nombre), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+// index.js la llama antes de importar cada modulo: pasa a process.env las claves
+// declaradas en su configuracion.json (sin pisar las que ya existan).
+export function cargarEnvModulo(nombre) {
+  const esquema = leerEsquemaModulo(nombre);
+  if (!esquema) return;
+  const env = leerEnvModulo(nombre);
+  for (const c of esquema.campos) {
+    if (env[c.clave] !== undefined && process.env[c.clave] === undefined) {
+      process.env[c.clave] = env[c.clave];
+    }
+  }
+}
+
+// Como se escribe un valor en el .env para que dotenv lo lea igual. null = no se puede.
+function formatearValorEnv(valor) {
+  if (valor === "") return "";
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(valor)) return valor;
+  if (!valor.includes("'")) return `'${valor}'`;
+  if (!valor.includes('"') && !/\\[nrt]/.test(valor)) return `"${valor}"`;
+  return null;
+}
+
+// Cambia solo las claves indicadas; valor "" borra la linea. Respeta el resto del archivo.
+function escribirEnvModulo(nombre, cambios) {
+  const ruta = rutaEnvModulo(nombre);
+  let lineas = [];
+  try {
+    lineas = fs.readFileSync(ruta, "utf8").replace(/\r\n/g, "\n").split("\n");
+  } catch {
+    /* archivo nuevo */
+  }
+  if (lineas.length && lineas[lineas.length - 1] === "") lineas.pop();
+
+  for (const [clave, valor] of Object.entries(cambios)) {
+    const re = new RegExp(`^\\s*${clave}\\s*=`);
+    const i = lineas.findIndex((l) => re.test(l));
+    if (valor === "") {
+      if (i >= 0) lineas.splice(i, 1);
+      continue;
+    }
+    const escrito = formatearValorEnv(valor);
+    if (escrito === null) throw new Error(`Valor no admitido para ${clave}.`);
+    if (i >= 0) lineas[i] = `${clave}=${escrito}`;
+    else lineas.push(`${clave}=${escrito}`);
+  }
+
+  fs.mkdirSync(path.dirname(ruta), { recursive: true });
+  const tmp = `${ruta}.${crypto.randomBytes(4).toString("hex")}.tmp`;
+  fs.writeFileSync(tmp, lineas.join("\n") + (lineas.length ? "\n" : ""), "utf8");
+  fs.renameSync(tmp, ruta);
+}
+
+// Valida lo que envia el panel. entrada = { valores: {CLAVE: valor}, borrar: [CLAVE] }.
+// estricto = true (asistente de primera vez): los campos obligatorios deben quedar con valor.
+// Si no, solo se impide vaciar un obligatorio que ya tenia valor.
+function validarAjustes(esquema, entrada, envActual, { estricto = false } = {}) {
+  const errores = [];
+  const cambios = {};
+  const e = esObjeto(entrada) ? entrada : {};
+  const valores = esObjeto(e.valores) ? e.valores : {};
+  const borrar = Array.isArray(e.borrar) ? e.borrar : [];
+  const porClave = new Map(esquema.campos.map((c) => [c.clave, c]));
+
+  for (const k of Object.keys(valores)) {
+    if (!porClave.has(k)) errores.push(`El ajuste ${k} no existe.`);
+  }
+  for (const k of borrar) {
+    if (!porClave.has(k)) errores.push(`El ajuste ${k} no existe.`);
+    else cambios[k] = "";
+  }
+
+  for (const c of esquema.campos) {
+    if (!Object.prototype.hasOwnProperty.call(valores, c.clave) || borrar.includes(c.clave)) continue;
+    let v = valores[c.clave];
+    const et = c.etiqueta;
+
+    if (c.tipo === "texto" || c.tipo === "secreto") {
+      if (typeof v !== "string") {
+        errores.push(`${et} debe ser texto.`);
+        continue;
+      }
+      v = c.quitarEspacios ? v.replace(/\s+/g, "") : v.trim();
+      if (v === "") {
+        if (c.tipo === "texto") cambios[c.clave] = ""; // un secreto vacio = conservar
+        continue;
+      }
+      if (v.length > c.longitudMax) {
+        errores.push(`${et} no puede pasar de ${c.longitudMax} caracteres.`);
+        continue;
+      }
+      if (/[\u0000-\u001f\u007f]/.test(v)) {
+        errores.push(`${et} contiene caracteres no permitidos.`);
+        continue;
+      }
+      if (c.patron && !new RegExp(c.patron).test(v)) {
+        errores.push(c.mensajePatron || `${et} no tiene un formato válido.`);
+        continue;
+      }
+      if (formatearValorEnv(v) === null) {
+        errores.push(`${et} no admite ese valor (mezcla comillas simples y dobles).`);
+        continue;
+      }
+      cambios[c.clave] = v;
+    } else if (c.tipo === "numero") {
+      const t = typeof v === "number" ? String(v) : typeof v === "string" ? v.trim() : null;
+      if (t === null) {
+        errores.push(`${et} debe ser un número.`);
+        continue;
+      }
+      if (t === "") {
+        cambios[c.clave] = "";
+        continue;
+      }
+      if (!/^-?\d+(\.\d+)?$/.test(t)) {
+        errores.push(`${et} debe ser un número.`);
+        continue;
+      }
+      const n = Number(t);
+      if ((c.min !== undefined && n < c.min) || (c.max !== undefined && n > c.max)) {
+        const rango = c.min !== undefined && c.max !== undefined ? `entre ${c.min} y ${c.max}` : c.min !== undefined ? `al menos ${c.min}` : `como máximo ${c.max}`;
+        errores.push(`${et} debe estar ${rango}.`);
+        continue;
+      }
+      cambios[c.clave] = String(n);
+    } else if (c.tipo === "booleano") {
+      if (typeof v !== "boolean") {
+        errores.push(`${et} debe ser verdadero o falso.`);
+        continue;
+      }
+      cambios[c.clave] = v ? "true" : "false";
+    } else if (c.tipo === "opcion") {
+      if (v === "" || v === null) {
+        cambios[c.clave] = "";
+        continue;
+      }
+      if (typeof v !== "string" || !c.opciones.some((o) => o.valor === v)) {
+        errores.push(`${et}: la opción elegida no es válida.`);
+        continue;
+      }
+      cambios[c.clave] = v;
+    }
+  }
+
+  for (const c of esquema.campos) {
+    if (!c.obligatorio || c.tipo === "booleano" || borrar.includes(c.clave)) continue;
+    const actual = envActual[c.clave] || "";
+    const final = Object.prototype.hasOwnProperty.call(cambios, c.clave) ? cambios[c.clave] : actual;
+    if (final !== "") continue;
+    if (c.predeterminado !== undefined) continue;
+    if (estricto || actual !== "") errores.push(`${c.etiqueta} es obligatorio.`);
+  }
+
+  return { errores, cambios };
+}
+
+// Campos tal como los ve el navegador: los secretos nunca viajan, solo si hay uno guardado.
+function camposPublicos(esquema, env) {
+  return esquema.campos.map((c) => {
+    const { patron, mensajePatron, quitarEspacios, ...visible } = c;
+    const crudo = env[c.clave];
+    if (c.tipo === "secreto") return { ...visible, guardado: Boolean(crudo) };
+    if (c.tipo === "booleano") {
+      return { ...visible, valor: crudo === undefined || crudo === "" ? c.predeterminado === true : crudo === "true" };
+    }
+    return { ...visible, valor: crudo === undefined ? "" : crudo };
+  });
+}
+
+function infoAjustes(deshabilitados) {
+  const resultado = [];
+  for (const m of listarModulos(deshabilitados)) {
+    const esquema = leerEsquemaModulo(m.nombre);
+    if (!esquema) continue;
+    resultado.push({
+      nombre: m.nombre,
+      titulo: esquema.titulo,
+      descripcion: esquema.descripcion,
+      activo: m.activo,
+      campos: camposPublicos(esquema, leerEnvModulo(m.nombre))
+    });
+  }
+  return resultado;
+}
+
+// Lo que el asistente de primera vez necesita saber de Discord.
+function infoDiscordSetup(deshabilitados) {
+  const env = leerEnvModulo("discord");
+  return {
+    disponible:
+      fs.existsSync(path.join(CARPETA_MODULOS, "discord", "module.js")) && leerEsquemaModulo("discord") !== null,
+    activo: !deshabilitados.includes("discord"),
+    tokenGuardado: Boolean(env.DISCORD_TOKEN),
+    guilds: env.DISCORD_ALLOWED_GUILDS || "",
+    logChannel: env.DISCORD_LOG_CHANNEL_ID || ""
+  };
+}
+
+// ============================================================
 // UTILIDADES DEL SERVIDOR HTTP
 // ============================================================
 
@@ -348,7 +879,7 @@ const TIPOS = {
 };
 
 // Solo se sirven estos archivos (nada de rutas arbitrarias).
-const ARCHIVOS_UI = new Set(["/estilos.css", "/app.js"]);
+const ARCHIVOS_UI = new Set(["/estilos.css", "/app.js", "/setup.js"]);
 
 const PAGINA_SIN_ACCESO =
   '<!doctype html><html lang="es"><meta charset="utf-8">' +
@@ -435,7 +966,7 @@ export async function iniciarPanelConfiguracion({ config, puertoServidor, hooks 
   const inicio = Date.now();
   const token = crypto.randomBytes(24).toString("base64url");
   const hashToken = sha256(token);
-  const snapReinicio = claveReinicio(config);
+  let snapReinicio = claveReinicio(config);
   let snapTunel = claveTunel(config);
   let puertoPanel = 0;
 
@@ -520,6 +1051,108 @@ export async function iniciarPanelConfiguracion({ config, puertoServidor, hooks 
         ...base,
         reinicioPendiente: claveReinicio(actual) !== snapReinicio,
         tunelPendiente: claveTunel(actual) !== snapTunel
+      };
+    },
+
+    "GET /api/setup/estado": () => {
+      const actual = cargarConfiguracion();
+      return {
+        pendiente: !usuarioExiste(),
+        discord: infoDiscordSetup(actual.modulos.deshabilitados),
+        tunel: { modo: actual.tunel.modo, urlPublica: actual.tunel.urlPublica }
+      };
+    },
+
+    "POST /api/setup": (req, body) => {
+      if (usuarioExiste()) {
+        throw new ErrorHttp(409, "La configuración inicial ya se completó.");
+      }
+      const b = esObjeto(body) ? body : {};
+      const errores = [];
+
+      const eNombre = errorNombre(b.usuario);
+      if (eNombre) errores.push(eNombre);
+      const eClave = errorContrasena(b.contrasena);
+      if (eClave) errores.push(eClave);
+
+      const actual = cargarConfiguracion();
+      const t = esObjeto(b.tunel) ? b.tunel : {};
+      const parcial = { tunel: { modo: t.modo, urlPublica: t.urlPublica } };
+      if (typeof t.token === "string" && t.token.trim()) parcial.tunel.token = t.token;
+
+      // Discord (solo si el modulo existe): usa el mismo esquema que el panel
+      let cambiosEnv = {};
+      let deshabilitados = [...actual.modulos.deshabilitados];
+      if (infoDiscordSetup(deshabilitados).disponible && esObjeto(b.discord)) {
+        if (b.discord.activar === true) {
+          const valores = {
+            DISCORD_ALLOWED_GUILDS: b.discord.guilds === undefined ? "" : b.discord.guilds,
+            DISCORD_LOG_CHANNEL_ID: b.discord.logChannel === undefined ? "" : b.discord.logChannel
+          };
+          if (b.discord.token) valores.DISCORD_TOKEN = b.discord.token;
+          const r = validarAjustes(leerEsquemaModulo("discord"), { valores }, leerEnvModulo("discord"), { estricto: true });
+          errores.push(...r.errores);
+          cambiosEnv = r.cambios;
+          deshabilitados = deshabilitados.filter((n) => n !== "discord");
+        } else if (!deshabilitados.includes("discord")) {
+          deshabilitados.push("discord");
+        }
+      }
+      parcial.modulos = { deshabilitados };
+
+      const { config: nueva, errores: erroresConfig } = normalizarConfig(parcial, actual);
+      validarCruzada(nueva, erroresConfig);
+      errores.push(...erroresConfig);
+
+      if (errores.length) throw new ErrorHttp(400, errores.join(" "), { errores });
+
+      const salt = crypto.randomBytes(16).toString("hex");
+      escribirJsonAtomico(RUTA_USUARIOS, {
+        usuario: String(b.usuario).trim(),
+        salt,
+        hash: hashPassword(b.contrasena, salt)
+      });
+      if (Object.keys(cambiosEnv).length) escribirEnvModulo("discord", cambiosEnv);
+      escribirJsonAtomico(RUTA_CONFIG, nueva);
+
+      // Lo recien guardado es el punto de partida: no cuenta como "pendiente".
+      snapReinicio = claveReinicio(nueva);
+      snapTunel = claveTunel(nueva);
+
+      console.log("[Configuracion] Configuración inicial completada desde el panel.");
+      if (typeof hooks.setupCompleto === "function") hooks.setupCompleto();
+      return { ok: true };
+    },
+
+    "GET /api/modulos/ajustes": () => ({
+      modulos: infoAjustes(cargarConfiguracion().modulos.deshabilitados)
+    }),
+
+    "PUT /api/modulos/ajustes": (req, body) => {
+      const entrada = esObjeto(body) && esObjeto(body.modulos) ? body.modulos : null;
+      const nombres = entrada ? Object.keys(entrada) : [];
+      if (!entrada || nombres.length === 0 || nombres.length > 100) {
+        throw new ErrorHttp(400, "No hay ajustes que guardar.");
+      }
+
+      const errores = [];
+      const plan = [];
+      for (const nombre of nombres) {
+        const esquema = leerEsquemaModulo(nombre);
+        if (!esquema) {
+          errores.push(`El módulo "${nombre}" no declara ajustes.`);
+          continue;
+        }
+        const r = validarAjustes(esquema, entrada[nombre], leerEnvModulo(nombre));
+        errores.push(...r.errores.map((e) => `${esquema.titulo}: ${e}`));
+        if (Object.keys(r.cambios).length) plan.push([nombre, r.cambios]);
+      }
+      if (errores.length) throw new ErrorHttp(400, errores.join(" "), { errores });
+
+      for (const [nombre, cambios] of plan) escribirEnvModulo(nombre, cambios);
+      return {
+        guardados: plan.map(([nombre]) => nombre),
+        modulos: infoAjustes(cargarConfiguracion().modulos.deshabilitados)
       };
     },
 
@@ -663,7 +1296,8 @@ export async function iniciarPanelConfiguracion({ config, puertoServidor, hooks 
         return res.end();
       }
       if (!cookieValida(req)) return enviar(res, 401, "text/html; charset=utf-8", PAGINA_SIN_ACCESO);
-      return enviar(res, 200, TIPOS[".html"], fs.readFileSync(path.join(CARPETA_UI, "index.html")));
+      const pagina = usuarioExiste() ? "index.html" : "setup.html";
+      return enviar(res, 200, TIPOS[".html"], fs.readFileSync(path.join(CARPETA_UI, pagina)));
     }
 
     if (!cookieValida(req)) {
@@ -691,6 +1325,13 @@ export async function iniciarPanelConfiguracion({ config, puertoServidor, hooks 
       }
     }
 
+    // Tema: CSS del color de acento (con ?acento=... se usa para la vista previa)
+    if ((metodo === "GET" || metodo === "HEAD") && url.pathname === "/tema.css") {
+      const previa = url.searchParams.get("acento");
+      const acento = previa !== null ? previa : cargarConfiguracion().tema.acento;
+      return enviar(res, 200, TIPOS[".css"], cssTema(acento));
+    }
+
     // Archivos de la interfaz
     if ((metodo === "GET" || metodo === "HEAD") && ARCHIVOS_UI.has(url.pathname)) {
       const archivo = path.join(CARPETA_UI, url.pathname);
@@ -711,14 +1352,22 @@ export async function iniciarPanelConfiguracion({ config, puertoServidor, hooks 
   puertoPanel = await escuchar(servidor, config.panel.puerto, puertoServidor);
 
   const url = `http://localhost:${puertoPanel}/?t=${token}`;
+  const enSetup = !usuarioExiste();
   console.log("\n==================================================");
-  console.log(" Configuración (solo accesible desde esta PC):");
+  console.log(enSetup
+    ? " Primera vez: completa la configuración inicial en esta página\n (solo accesible desde esta PC):"
+    : " Configuración (solo accesible desde esta PC):");
   console.log(" " + url);
   console.log("==================================================\n");
 
   const forzar = process.env.CONFIG_ABRIR;
-  const abrir = forzar === "1" ? true : forzar === "0" ? false : config.panel.abrirAlIniciar;
+  const abrir = forzar === "1" ? true : forzar === "0" ? false : config.panel.abrirAlIniciar || enSetup;
   if (abrir) abrirNavegador(url);
 
-  return { puerto: puertoPanel, url, cerrar: () => servidor.close() };
+  return {
+    puerto: puertoPanel,
+    url,
+    setupPendiente: () => !usuarioExiste(),
+    cerrar: () => servidor.close()
+  };
 }

@@ -11,7 +11,7 @@ import { spawn } from "child_process";
 import AdmZip from "adm-zip";
 import { asignarPuertoLibre } from "./modules/registro.js";
 import { obtenerOCrearApiKey, crearVerificador } from "./modules/apikey.js";
-import { cargarConfiguracion, iniciarPanelConfiguracion } from "./configuracion.js";
+import { cargarConfiguracion, iniciarPanelConfiguracion, cargarEnvModulo, cssTema } from "./configuracion.js";
 
 // config.json (lo edita el panel de configuracion). Las variables de entorno
 // siguen teniendo prioridad sobre este archivo.
@@ -2502,6 +2502,9 @@ const modulosCargados = [];
 
 async function cargarModulos() {
 
+  const deshabilitadosPorConfig =
+    cargarConfiguracion().modulos.deshabilitados;
+
   if (
     !fs.existsSync(modulesDir)
   )
@@ -2517,7 +2520,7 @@ async function cargarModulos() {
     .filter(
       (d) =>
         d.isDirectory() &&
-        !CONFIG.modulos.deshabilitados.includes(d.name)
+        !deshabilitadosPorConfig.includes(d.name)
     );
 
   for (
@@ -2535,6 +2538,9 @@ async function cargarModulos() {
       !fs.existsSync(rutaModule)
     )
       continue;
+
+    // Ajustes del modulo (configuracion.json + .env) disponibles en process.env
+    cargarEnvModulo(carpeta.name);
 
     const mod =
       (
@@ -2852,7 +2858,7 @@ app.post(
 // ============================================================
 
 const DOMINIOS_CONOCIDOS = [
-  "chat.openai.com",
+  "chatgpt.com",
   "claude.ai"
 ];
 
@@ -2908,204 +2914,373 @@ function paginaLoginOAuth({
       )
       .join("\n");
 
-  return `<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Autorizar MCP</title>
-<link rel="icon" href="/logo.svg" type="image/svg+xml">
-<style>
-.logo-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 6px;
-}
-.logo-wrap img {
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
-}
-.brand {
-  text-align: center;
-  color: #cbb6ff;
-  font-size: 13px;
-  letter-spacing: 0.03em;
-  margin: 2px 0 20px;
-}
-body {
-  font-family: Arial, sans-serif;
-  background: #111;
-  color: #eee;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  margin: 0;
-}
-.card {
-  width: min(420px, calc(100% - 40px));
-  background: #1d1d1d;
-  padding: 28px;
-  border-radius: 14px;
-  box-sizing: border-box;
-}
-h1 {
-  margin-top: 0;
-}
-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 11px;
-  margin: 7px 0 15px;
-  border-radius: 7px;
-  border: 1px solid #555;
-  background: #111;
-  color: white;
-}
-button {
-  width: 100%;
-  padding: 12px;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.error {
-  background: #5c2020;
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-}
-.small {
-  color: #aaa;
-  font-size: 13px;
-}
-.solicitante {
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 18px;
-  border: 1px solid;
-}
-.solicitante.conocido {
-  background: #14261f;
-  border-color: #2a4a3a;
-}
-.solicitante.desconocido {
-  background: #2b2210;
-  border-color: #5c4a15;
-}
-.solicitante .nombre {
-  font-weight: bold;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.solicitante .badge {
-  font-size: 11px;
-  font-weight: normal;
-  padding: 2px 8px;
-  border-radius: 20px;
-}
-.conocido .badge {
-  background: #1f4030;
-  color: #7be2a6;
-}
-.desconocido .badge {
-  background: #4a3a10;
-  color: #e8c25a;
-}
-.solicitante .redirect {
-  font-size: 12px;
-  margin-top: 4px;
-  word-break: break-all;
-}
-.conocido .redirect {
-  color: #9fd6b8;
-}
-.desconocido .redirect {
-  color: #e8c25a;
-}
-.solicitante .aviso {
-  font-size: 12px;
-  margin-top: 6px;
-  color: #aaa;
-}
-</style>
-</head>
-<body>
-<div class="card">
-<div class="logo-wrap"><img src="/logo.svg" alt="Juanmonopi's Model Context Protocol"></div>
-<p class="brand">Juanmonopi's Model Context Protocol</p>
-<h1>Autorizar MCP</h1>
-
-${(() => {
   const conocido =
     esDominioConocido(
       redirectHost
     );
 
-  return `<div class="solicitante ${conocido ? "conocido" : "desconocido"}">
-  <div class="nombre">
-    ${escaparHtml(clientName || "Aplicación desconocida")}
-    <span class="badge">${conocido ? "✓ dominio conocido" : "⚠ dominio no reconocido"}</span>
-  </div>
-  ${
-    redirectHost
-      ? `<div class="redirect">Te va a devolver a: ${escaparHtml(redirectHost)}</div>`
-      : ""
-  }
-  <div class="aviso">
-    El nombre lo declara la app al registrarse, no está verificado.
-    ${
-      conocido
-        ? "El dominio de destino sí está en tu lista de conocidos."
-        : "El dominio de destino NO está en tu lista de conocidos — revisalo con cuidado."
-    }
-  </div>
-</div>`;
-})()}
+  const iconoEstado = conocido
+    ? '<path d="M12 3 5 6v5.5c0 4.2 2.8 7.8 7 9.5 4.2-1.7 7-5.3 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>'
+    : '<path d="M12 3.5 2.8 19.5h18.4L12 3.5Z"/><path d="M12 10v4.5"/><path d="M12 17.4v.1"/>';
 
-<p class="small">
-Solo continúa si reconocés la aplicación y el dominio de arriba.
-</p>
+  return `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Autorizar acceso</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<style>
+/* Mismo estilo que el panel de configuración: Fluent / Windows 11. */
+:root {
+  color-scheme: light dark;
 
-${
-  error
-    ? `<div class="error">${escaparHtml(error)}</div>`
-    : ""
+  --fuente: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --fuente-titulo: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+
+  --fondo: #f3f3f3;
+  --tarjeta: #fbfbfb;
+  --borde: #e5e5e5;
+  --borde-fuerte: #d4d4d4;
+  --texto: #1a1a1a;
+  --texto-2: #5c5c5c;
+  --texto-3: #8a8a8a;
+  --control: #ffffff;
+  --control-hover: #f7f7f7;
+  --control-borde: #d9d9d9;
+  --control-base: #8a8a8a;
+  --hover: rgba(0, 0, 0, 0.045);
+
+  --acento: #005fb8;
+  --acento-texto: #ffffff;
+
+  --ok: #0f7b0f;
+  --ok-fondo: #dff6dd;
+  --aviso: #9d5d00;
+  --aviso-fondo: #fff4ce;
+  --error: #c42b1c;
+  --error-fondo: #fde7e9;
+
+  --sombra: 0 8px 16px rgba(0, 0, 0, 0.14), 0 0 2px rgba(0, 0, 0, 0.12);
+  --radio: 8px;
+  --radio-control: 4px;
 }
 
-<form method="POST" action="/oauth/authorize">
-<input type="hidden" name="csrf" value="${escaparHtml(csrf)}">
-${hidden}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #202020;
+    --tarjeta: #2b2b2b;
+    --borde: #393939;
+    --borde-fuerte: #4a4a4a;
+    --texto: #ffffff;
+    --texto-2: #cfcfcf;
+    --texto-3: #9d9d9d;
+    --control: #313131;
+    --control-hover: #383838;
+    --control-borde: #424242;
+    --control-base: #9a9a9a;
+    --hover: rgba(255, 255, 255, 0.06);
 
-<label>Usuario</label>
-<input
-  name="usuario"
-  autocomplete="username"
-  required
->
+    --acento: #60cdff;
+    --acento-texto: #000000;
 
-<label>Contraseña</label>
-<input
-  type="password"
-  name="contrasena"
-  autocomplete="current-password"
-  required
->
+    --ok: #6ccb5f;
+    --ok-fondo: #323b1f;
+    --aviso: #fce100;
+    --aviso-fondo: #433519;
+    --error: #ff99a4;
+    --error-fondo: #442726;
 
-<button type="submit">
-Autorizar acceso
-</button>
-</form>
+    --sombra: 0 8px 16px rgba(0, 0, 0, 0.5), 0 0 2px rgba(0, 0, 0, 0.5);
+  }
+}
+
+@supports (color: AccentColor) {
+  :root {
+    --acento: AccentColor;
+    --acento-texto: AccentColorText;
+  }
+}
+${cssTema(cargarConfiguracion().tema.acento)}
+*, *::before, *::after { box-sizing: border-box; }
+
+html { min-height: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  font-family: var(--fuente);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--texto);
+  background: var(--fondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+.contenedor {
+  width: 100%;
+  max-width: 440px;
+}
+
+.cabecera {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.cabecera img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  box-shadow: var(--sombra);
+}
+
+.marca {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--texto-2);
+  letter-spacing: 0.02em;
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tarjeta {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+
+.solicitante {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.solicitante-icono {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.conocido .solicitante-icono { background: var(--ok-fondo); color: var(--ok); }
+.desconocido .solicitante-icono { background: var(--aviso-fondo); color: var(--aviso); }
+
+.icono {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.solicitante-texto { flex: 1 1 auto; min-width: 0; }
+
+.solicitante-nombre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.insignia {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.conocido .insignia { background: var(--ok-fondo); color: var(--ok); }
+.desconocido .insignia { background: var(--aviso-fondo); color: var(--aviso); }
+
+.solicitante-destino {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--texto-2);
+  overflow-wrap: anywhere;
+}
+
+.solicitante-destino b { font-weight: 600; color: var(--texto); }
+
+.solicitante-nota {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.formulario {
+  padding: 16px;
+  border-top: 1px solid var(--borde);
+}
+
+.aviso-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radio-control);
+  background: var(--error-fondo);
+  font-size: 13px;
+}
+
+.aviso-error .icono { flex: none; width: 18px; height: 18px; color: var(--error); }
+
+.campo { margin-bottom: 14px; }
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--texto);
+}
+
+input[type="text"],
+input[type="password"] {
+  display: block;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--control-borde);
+  border-bottom-color: var(--control-base);
+  border-radius: var(--radio-control);
+  background: var(--control);
+  color: var(--texto);
+  font: inherit;
+}
+
+input[type="text"]:hover,
+input[type="password"]:hover { background: var(--control-hover); }
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+  outline: none;
+  border-bottom: 2px solid var(--acento);
+  padding-bottom: 1px;
+  background: var(--control);
+}
+
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  margin-top: 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radio-control);
+  background: var(--acento);
+  color: var(--acento-texto);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover { background: color-mix(in srgb, var(--acento) 88%, var(--texto)); }
+button:active { background: color-mix(in srgb, var(--acento) 76%, var(--texto)); }
+button:focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
+
+.pie {
+  margin: 14px 4px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--texto-2);
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<main class="contenedor">
+
+<header class="cabecera">
+  <img src="/logo.svg" alt="">
+  <p class="marca">Juanmonopi's Model Context Protocol</p>
+  <h1>Autorizar acceso</h1>
+</header>
+
+<div class="tarjeta">
+
+  <section class="solicitante ${conocido ? "conocido" : "desconocido"}">
+    <span class="solicitante-icono">
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">${iconoEstado}</svg>
+    </span>
+    <div class="solicitante-texto">
+      <div class="solicitante-nombre">
+        ${escaparHtml(clientName || "Aplicación desconocida")}
+        <span class="insignia">${conocido ? "Dominio conocido" : "Dominio no reconocido"}</span>
+      </div>
+      ${
+        redirectHost
+          ? `<div class="solicitante-destino">Te devolverá a <b>${escaparHtml(redirectHost)}</b></div>`
+          : ""
+      }
+      <div class="solicitante-nota">
+        El nombre lo declara la app al registrarse y no está verificado.
+        ${
+          conocido
+            ? "El dominio de destino está en tu lista de conocidos."
+            : "El dominio de destino no está en tu lista de conocidos: revísalo con cuidado."
+        }
+      </div>
+    </div>
+  </section>
+
+  <form class="formulario" method="POST" action="/oauth/authorize">
+    ${
+      error
+        ? `<div class="aviso-error" role="alert"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.4v.1"/></svg><span>${escaparHtml(error)}</span></div>`
+        : ""
+    }
+    <input type="hidden" name="csrf" value="${escaparHtml(csrf)}">
+    ${hidden}
+
+    <div class="campo">
+      <label for="usuario">Usuario</label>
+      <input id="usuario" type="text" name="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    </div>
+
+    <div class="campo">
+      <label for="contrasena">Contraseña</label>
+      <input id="contrasena" type="password" name="contrasena" autocomplete="current-password" required>
+    </div>
+
+    <button type="submit">Autorizar acceso</button>
+  </form>
 
 </div>
+
+<p class="pie">Continúa solo si reconoces la aplicación y el dominio de arriba.</p>
+
+</main>
 </body>
 </html>`;
 }
-
 // ============================================================
 // GET /oauth/authorize
 // ============================================================
@@ -4396,9 +4571,74 @@ setInterval(
 
 async function iniciar() {
 
+  // Panel de configuracion (solo localhost, otro puerto, nunca por el tunel).
+  // La primera vez, sin usuarios.json, tambien es el asistente de configuracion.
+  let panel = null;
+  let terminarSetup = () => {};
+  const setupTerminado =
+    new Promise((resolver) => { terminarSetup = resolver; });
+
+  try {
+
+    panel = await iniciarPanelConfiguracion({
+      config: CONFIG,
+      puertoServidor: PORT,
+      hooks: {
+        estado: () => ({
+          urlLocal: `http://localhost:${PORT}/mcp`,
+          urlPublicaMcp: URL_PUBLICA_MCP,
+          urlIssuer: URL_OAUTH_ISSUER,
+          tunel: {
+            modo: modoTunelActual,
+            activo: !!cfProceso && cfProceso.exitCode === null
+          },
+          modulosCargados: [...modulosCarpetas]
+        }),
+        recargarUsuario: () => {
+          usuarioConfigurado = cargarUsuario();
+        },
+        cerrarSesiones: ({ revocarOAuth } = {}) => {
+          sesiones.clear();
+          if (revocarOAuth) {
+            oauthAccessTokens.clear();
+            oauthRefreshTokens.clear();
+            oauthAuthorizationCodes.clear();
+          }
+        },
+        reiniciarTunel: () => reiniciarTunel(),
+        setupCompleto: () => terminarSetup()
+      }
+    });
+
+  } catch (err) {
+
+    console.error(
+      "No se pudo iniciar el panel de configuracion:",
+      err.message
+    );
+  }
+
   // Usuario tradicional
-  usuarioConfigurado =
-    await configurarUsuarioSiHaceFalta();
+  if (panel && !cargarUsuario()) {
+
+    console.log(
+      "Esperando a que completes la configuracion inicial en el navegador..."
+    );
+
+    await setupTerminado;
+
+    usuarioConfigurado =
+      cargarUsuario();
+
+    console.log(
+      `Usuario configurado: ${usuarioConfigurado.usuario}`
+    );
+
+  } else {
+
+    usuarioConfigurado =
+      await configurarUsuarioSiHaceFalta();
+  }
 
   // Clientes OAuth registrados
   cargarOAuthPersistente();
@@ -4432,47 +4672,7 @@ async function iniciar() {
         `OAuth metadata: ${URL_OAUTH_ISSUER}/.well-known/oauth-authorization-server`
       );
 
-      // Panel de configuracion (solo localhost, otro puerto, nunca por el tunel)
-      try {
-
-        await iniciarPanelConfiguracion({
-          config: CONFIG,
-          puertoServidor: PORT,
-          hooks: {
-            estado: () => ({
-              urlLocal: `http://localhost:${PORT}/mcp`,
-              urlPublicaMcp: URL_PUBLICA_MCP,
-              urlIssuer: URL_OAUTH_ISSUER,
-              tunel: {
-                modo: modoTunelActual,
-                activo: !!cfProceso && cfProceso.exitCode === null
-              },
-              modulosCargados: [...modulosCarpetas]
-            }),
-            recargarUsuario: () => {
-              usuarioConfigurado = cargarUsuario();
-            },
-            cerrarSesiones: ({ revocarOAuth } = {}) => {
-              sesiones.clear();
-              if (revocarOAuth) {
-                oauthAccessTokens.clear();
-                oauthRefreshTokens.clear();
-                oauthAuthorizationCodes.clear();
-              }
-            },
-            reiniciarTunel: () => reiniciarTunel()
-          }
-        });
-
-      } catch (err) {
-
-        console.error(
-          "No se pudo iniciar el panel de configuracion:",
-          err.message
-        );
-      }
-
-      await prepararCloudflared(CONFIG.tunel);
+      await prepararCloudflared(cargarConfiguracion().tunel);
 
       console.log(
         "Iniciando tunel..."

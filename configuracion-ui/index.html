@@ -7,6 +7,7 @@
   <title>Configuración · Servidor MCP</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%230067c0'/%3E%3Cpath d='M7 9h10M7 15h10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='15' cy='9' r='2.2' fill='%230067c0' stroke='white' stroke-width='1.6'/%3E%3Ccircle cx='9' cy='15' r='2.2' fill='%230067c0' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/estilos.css">
+  <link rel="stylesheet" href="/tema.css" id="tema-css">
 </head>
 <body>
 
@@ -36,6 +37,7 @@
   <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v4M15 3v4"/><path d="M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
   <symbol id="i-server" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="6.5" rx="1.5"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.5"/><path d="M7 7.2h.01M7 16.8h.01"/></symbol>
   <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H17a4 4 0 0 0 4-4c0-4.4-4-8.2-9-8.2Z"/><circle cx="7.5" cy="11.5" r=".8"/><circle cx="10" cy="7.5" r=".8"/><circle cx="14.5" cy="7.5" r=".8"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/></symbol>
 </svg>
 
@@ -56,6 +58,7 @@
       <button class="nav-item" data-vista="cuenta" type="button"><svg class="icono" aria-hidden="true"><use href="#i-user"/></svg><span>Cuenta</span></button>
       <button class="nav-item" data-vista="tunel" type="button"><svg class="icono" aria-hidden="true"><use href="#i-cloud"/></svg><span>Túnel</span></button>
       <button class="nav-item" data-vista="servidor" type="button"><svg class="icono" aria-hidden="true"><use href="#i-sliders"/></svg><span>Servidor</span></button>
+      <button class="nav-item" data-vista="temas" type="button"><svg class="icono" aria-hidden="true"><use href="#i-palette"/></svg><span>Temas</span></button>
       <button class="nav-item" data-vista="modulos" type="button"><svg class="icono" aria-hidden="true"><use href="#i-apps"/></svg><span>Módulos</span></button>
       <button class="nav-item" data-vista="seguridad" type="button"><svg class="icono" aria-hidden="true"><use href="#i-shield"/></svg><span>Seguridad</span></button>
     </nav>
@@ -287,12 +290,59 @@
         </div>
       </section>
 
+      <!-- TEMAS -->
+      <section class="vista" id="vista-temas" aria-labelledby="t-temas" hidden>
+        <h1 id="t-temas">Temas</h1>
+        <p class="intro">Cambia el color de acento de esta configuración y de la página donde autorizas los conectores. El modo claro u oscuro sigue al de tu sistema.</p>
+
+        <h2>Color de acento</h2>
+        <div class="tarjeta">
+          <div class="tema-presets" id="tema-presets" role="radiogroup" aria-label="Colores predefinidos"></div>
+          <div class="fila fila-campo">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-palette"/></svg>
+            <div class="fila-texto"><label class="fila-titulo" for="tema-hex">Color personalizado</label><div class="fila-desc">Elige cualquier color o escribe su código (#RRGGBB). Si es muy claro o muy oscuro se ajusta un poco para que el texto se lea.</div></div>
+            <div class="fila-control grupo"><input class="entrada-color" id="tema-color" type="color" aria-label="Selector de color"><input class="entrada entrada-corta" id="tema-hex" type="text" maxlength="7" placeholder="Predeterminado" spellcheck="false" autocomplete="off"></div>
+          </div>
+        </div>
+
+        <div class="aviso aviso-info aviso-suelto" id="tema-aviso" hidden>
+          <svg class="icono aviso-icono" aria-hidden="true"><use href="#i-info"/></svg>
+          <div class="aviso-texto"><strong>Vista previa.</strong> Pulsa Guardar tema para conservar este color. Si sales de esta página se descarta.</div>
+        </div>
+
+        <h2>Vista previa</h2>
+        <div class="tarjeta">
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-bolt"/></svg>
+            <div class="fila-texto"><span class="fila-titulo">Botones</span><div class="fila-desc">Acción principal y secundaria.</div></div>
+            <div class="fila-control grupo"><button class="boton" type="button">Secundario</button><button class="boton acento" type="button">Principal</button></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-check"/></svg>
+            <div class="fila-texto"><span class="fila-titulo">Interruptor</span><div class="fila-desc">Así se ve una opción activada.</div></div>
+            <div class="fila-control"><input class="interruptor" type="checkbox" checked aria-label="Ejemplo de interruptor"></div>
+          </div>
+          <div class="fila">
+            <svg class="icono fila-icono" aria-hidden="true"><use href="#i-sliders"/></svg>
+            <div class="fila-texto"><span class="fila-titulo">Campo de texto</span><div class="fila-desc">Haz clic para ver el color de enfoque.</div></div>
+            <div class="fila-control"><input class="entrada" type="text" value="Texto de ejemplo" aria-label="Ejemplo de campo de texto"></div>
+          </div>
+        </div>
+
+        <div class="barra-acciones">
+          <button class="boton" type="button" id="tema-restablecer"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-refresh"/></svg>Restablecer</button>
+          <button class="boton acento" type="button" id="tema-guardar" disabled><svg class="icono icono-boton" aria-hidden="true"><use href="#i-save"/></svg>Guardar tema</button>
+        </div>
+      </section>
+
       <!-- MODULOS -->
       <section class="vista" id="vista-modulos" aria-labelledby="t-modulos" hidden>
         <h1 id="t-modulos">Módulos</h1>
         <p class="intro">Activa o desactiva las herramientas que expone el servidor. Los cambios se aplican al reiniciar.</p>
 
         <div class="tarjeta" id="lista-modulos"></div>
+
+        <div id="ajustes-modulos"></div>
 
         <div class="barra-acciones">
           <button class="boton" type="button" id="mod-guardar"><svg class="icono icono-boton" aria-hidden="true"><use href="#i-save"/></svg>Guardar</button>

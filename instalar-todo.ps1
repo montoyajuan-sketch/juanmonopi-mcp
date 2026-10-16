@@ -124,8 +124,8 @@ if ($SinDiscord) {
             $ejemplo = Join-Path $carpetaDiscord ".env.example"
             if (-not (Test-Path $archivoEnv) -and (Test-Path $ejemplo)) {
                 Copy-Item $ejemplo $archivoEnv
-                Write-Host "  Cree modules\discord\.env vacio: falta que pongas tu DISCORD_TOKEN." -ForegroundColor Yellow
-                $resumen["Discord"] = "OK - falta DISCORD_TOKEN en modules\discord\.env"
+                Write-Host "  Cree modules\discord\.env vacio: pon tu DISCORD_TOKEN en el asistente de la primera vez (o en Configuracion > Modulos)." -ForegroundColor Yellow
+                $resumen["Discord"] = "OK - falta el token (se pone en el asistente de configuracion)"
             } else {
                 $resumen["Discord"] = "OK"
             }

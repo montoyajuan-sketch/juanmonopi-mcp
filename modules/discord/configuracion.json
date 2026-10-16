@@ -1,0 +1,34 @@
+{
+  "titulo": "Discord",
+  "descripcion": "Token del bot y límites de acceso del módulo de Discord.",
+  "campos": [
+    {
+      "clave": "DISCORD_TOKEN",
+      "etiqueta": "Token del bot",
+      "tipo": "secreto",
+      "obligatorio": true,
+      "longitudMax": 200,
+      "patron": "^[A-Za-z0-9_-]{15,}\\.[A-Za-z0-9_-]{4,}\\.[A-Za-z0-9_-]{20,}$",
+      "mensajePatron": "El token de Discord no tiene un formato válido (son tres partes separadas por puntos). Cópialo de nuevo desde el Portal de Desarrolladores.",
+      "ayuda": "Portal de Desarrolladores de Discord → tu aplicación → Bot → Restablecer token."
+    },
+    {
+      "clave": "DISCORD_ALLOWED_GUILDS",
+      "etiqueta": "Servidores permitidos",
+      "tipo": "texto",
+      "quitarEspacios": true,
+      "patron": "^\\d{15,25}(,\\d{15,25})*$",
+      "mensajePatron": "Los servidores permitidos deben ser IDs numéricos separados por comas.",
+      "placeholder": "123456789012345678",
+      "ayuda": "Opcional. IDs separados por comas; vacío = todos donde esté el bot."
+    },
+    {
+      "clave": "DISCORD_LOG_CHANNEL_ID",
+      "etiqueta": "Canal de registro",
+      "tipo": "texto",
+      "patron": "^\\d{15,25}$",
+      "mensajePatron": "El canal de registro debe ser un ID numérico.",
+      "ayuda": "Opcional. ID del canal donde se anota cada herramienta usada."
+    }
+  ]
+}

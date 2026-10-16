@@ -494,6 +494,8 @@ select.entrada { padding-right: 8px; }
 .aviso-texto { flex: 1 1 auto; font-size: 13px; }
 
 .aviso-aviso { background: var(--aviso-fondo); }
+.aviso-error { background: var(--error-fondo); }
+.aviso-error .aviso-icono { color: var(--error); }
 .aviso-aviso .aviso-icono { color: var(--aviso); }
 .aviso-info .aviso-icono { color: var(--acento); }
 
@@ -610,3 +612,149 @@ select.entrada { padding-right: 8px; }
   .fila-control .entrada { width: 100%; }
   .campo-clave .entrada { flex: 1; }
 }
+
+/* ---------- Asistente de configuración inicial ---------- */
+
+.pagina-setup { overflow-y: auto; height: auto; min-height: 100%; }
+
+.asistente {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 20px 56px;
+}
+
+.asistente-cabecera { text-align: center; margin-bottom: 8px; }
+.asistente-cabecera .heroe-icono { margin: 0 auto 16px; width: 64px; height: 64px; border-radius: 16px; }
+.asistente-cabecera .heroe-icono .icono { width: 32px; height: 32px; }
+.asistente-cabecera h1 { font-size: 32px; }
+.asistente-cabecera .intro { max-width: 520px; margin-left: auto; margin-right: auto; }
+
+.pasos {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0 28px;
+  padding: 0;
+  list-style: none;
+}
+
+.paso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 999px;
+  color: var(--texto-2);
+}
+
+.paso-num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--borde-fuerte);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.paso.actual { background: var(--seleccion); color: var(--texto); }
+.paso.actual .paso-num { background: var(--acento); border-color: var(--acento); color: var(--acento-texto); }
+.paso.hecho .paso-num { background: var(--ok-fondo); border-color: var(--ok); color: var(--ok); }
+
+.paso-titulo { margin: 0 0 6px; font-size: 20px; font-family: var(--fuente-titulo); }
+
+.separada { margin-top: 12px; }
+
+.asistente-pie {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.asistente-pie .boton:only-of-type { margin-left: auto; }
+.asistente-pie [hidden] + .boton { margin-left: auto; }
+
+@media (max-width: 860px) {
+  .paso-nombre { display: none; }
+  .paso { padding: 6px 8px; }
+  .asistente { padding-top: 24px; }
+}
+
+/* ---------- Ajustes de módulos ---------- */
+
+.requerido { color: var(--texto-2); font-weight: 400; }
+.ajustes-bloque .nota { margin-top: 8px; }
+.ajustes-bloque h2 { display: flex; align-items: center; gap: 8px; }
+.etiqueta-apagado {
+  font-size: 12px;
+  font-weight: 400;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--hover);
+  color: var(--texto-2);
+}
+
+/* ---------- Temas ---------- */
+
+.tema-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.muestra {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 6px 10px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--tarjeta);
+  color: var(--texto);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.muestra:hover { background: var(--hover); }
+
+.muestra[aria-checked="true"] {
+  border-color: var(--acento);
+  box-shadow: inset 0 0 0 1px var(--acento);
+}
+
+.muestra:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.muestra-color {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--muestra);
+  color: var(--muestra-texto, #fff);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.muestra-color .icono { width: 16px; height: 16px; stroke-width: 2.2; opacity: 0; }
+.muestra[aria-checked="true"] .muestra-color .icono { opacity: 1; }
+
+.entrada-color {
+  width: 44px;
+  height: 32px;
+  padding: 2px 4px;
+  border: 1px solid var(--control-borde);
+  border-bottom-color: var(--control-base);
+  border-radius: var(--radio-control);
+  background: var(--control);
+  cursor: pointer;
+}
+
+.entrada-color::-webkit-color-swatch-wrapper { padding: 2px; }
+.entrada-color::-webkit-color-swatch { border: none; border-radius: 2px; }
+.entrada-color::-moz-color-swatch { border: none; border-radius: 2px; }

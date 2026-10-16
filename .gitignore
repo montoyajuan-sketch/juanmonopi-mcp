@@ -49,3 +49,4 @@ token*.txt
 
 # Configuracion local (token del tunel, puertos...)
 config.json
+modules/*/.env
